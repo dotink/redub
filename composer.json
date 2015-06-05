@@ -1,0 +1,26 @@
+{
+	"name": "dotink/redub",
+	"description": "A simplified ORM built on top of Doctrine DBAL",
+	"keywords": ["redub"],
+	"license": "AGPL 3.0",
+	"authors": [
+		{
+			"name": "Matthew J. Sahagian",
+			"email": "msahagian@dotink.org",
+			"role": "Lead Architect / Developer"
+		}
+	],
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "http://packages.dotink.org"
+		}
+	],
+	"require": {
+		"php": ">=5.4.0",
+		"dotink/flourish-core": "dev-master"
+	},
+	"autoload": {
+		"classmap": ["src/"]
+	}
+}
