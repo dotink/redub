@@ -22,29 +22,42 @@
 		/**
 		 *
 		 */
-		public function __construct($driver_alias, $config = array())
+		public function __construct($config = array(), DriverInterface $driver = NULL)
 		{
-			$this->driverAlias = $driver_alias;
-			$this->config      = $config;
+			if (!isset($config['driver']) && !isset($config['dbname'])) {
+				throw new Flourish\ProgrammerException(
+					'Cannot create connection with missing driver or database name.'
+				);
+			}
+
+			$this->config = $config;
+			$this->driver = $driver;
 		}
 
 
 		/**
 		 *
 		 */
-		public function getDriverAlias()
+		public function execute($cmd)
 		{
-			return $this->driverAlias;
+			if (!$this->driver) {
+				throw new Exception(
+					'Unable to execute (%s), no driver configured',
+					$cmd
+				);
+			}
+
+			if (!$this->driver->connect($this)) {
+				throw new Exception(
+					'Unable to connect to database "%s" using driver "%s"',
+					$this->getConfig('dbname'),
+					$this->getConfig('driver')
+				);
+			}
+
+			return $this->driver->run($cmd);
 		}
 
-
-		/**
-		 *
-		 */
-		public function query($query)
-		{
-			return $this->driver->run($this, $query);
-		}
 
 
 		/**
@@ -63,7 +76,7 @@
 
 			} else {
 				throw new Flourish\ProgrammerException(
-					'Missing configuration key "%s" is connection config',
+					'Missing configuration key "%s" (used by driver) in connection config',
 					$key
 				);
 			}

@@ -1,7 +1,7 @@
-<?php namespace Redub\Database\SQL
+<?php namespace Redub\Database
 {
-	use Redub\Database;
 	use Dotink\Flourish;
+
 	use PDOStatement;
 	use PDO;
 
@@ -9,8 +9,14 @@
 	 * A PDOResult
 	 *
 	 */
-	class PDOResult implements Database\ResultInterface
+	class PDOResult implements ResultInterface
 	{
+		/**
+		 *
+		 */
+		protected $count = 0;
+
+
 		/**
 		 *
 		 */
@@ -26,11 +32,10 @@
 		/**
 		 *
 		 */
-		public function __construct(PDOStatement $result, $count = 1, $unlimited_count = 1)
+		public function __construct(PDOStatement $result, $count = 0)
 		{
 			$this->result         = $result;
 			$this->count          = $count;
-			$this->unlimitedCount = $unlimited_count;
 
 			$this->fetchRow();
 		}
@@ -39,11 +44,9 @@
 		/**
 		 *
 		 */
-		public function count($unlimited = FALSE)
+		public function count()
 		{
-			return $unlimited
-				? $this->unlimitedCount
-				: $this->count;
+			return $this->count;
 		}
 
 

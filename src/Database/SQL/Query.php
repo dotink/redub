@@ -17,13 +17,49 @@
 		/**
 		 *
 		 */
+		protected $from = NULL;
+
+
+		/**
+		 *
+		 */
+		protected $fromAliases = array();
+
+
+		/**
+		 *
+		 */
+		protected $fromIdentifiers = NULL;
+
+
+		/**
+		 *
+		 */
+		protected $join = NULL;
+
+
+		/**
+		 *
+		 */
 		protected $limit = NULL;
 
 
 		/**
 		 *
 		 */
-		protected $selectItems = array();
+		protected $offset = NULL;
+
+
+		/**
+		 *
+		 */
+		protected $order = NULL;
+
+
+		/**
+		 *
+		 */
+		protected $select = NULL;
 
 
 		/**
@@ -35,22 +71,41 @@
 		/**
 		 *
 		 */
-		public function __construct($query, DriverInterface $driver = NULL, $parse_full = TRUE)
-		{
-			$this->driver = $driver ?: new Driver();
-			$this->query  = trim($query);
+		protected $selectIdentifiers = array();
 
-			$this->parse($parse_full);
+
+		/**
+		 *
+		 */
+		protected $tokens = array();
+
+
+		/**
+		 *
+		 */
+		protected $where = NULL;
+
+
+		/**
+		 *
+		 */
+		public function __construct($sql = NULL, PlatformInterface $platform = NULL)
+		{
+			$this->sql = $sql;
+
+			if ($platform) {
+				$platform->parse($this);
+			}
 		}
 
 
 		/**
 		 *
 		 */
-		public function addSelect($select_item, $select_alias = NULL, $ignore_validation = FALSE)
+		public function addSelect($identifier, $alias = NULL)
 		{
-			$this->selectItems[]   = $select_item;
-			$this->selectAliases[] = $select_alias;
+			$this->selectAliases[]     = $alias;
+			$this->selectIdentifiers[] = $item;
 		}
 
 
@@ -75,54 +130,71 @@
 		/**
 		 *
 		 */
-		public function compose()
+		public function checkOffset()
 		{
-			if (!$this->query) {
-
-			}
-
-			return $this->query . ';';
+			return $this->offset !== NULL;
 		}
+
 
 		/**
 		 *
 		 */
 		public function getLimit()
 		{
-			return $this->limit();
+			return $this->limit;
 		}
 
 
 		/**
 		 *
 		 */
-		public function setSelect($select_string)
+		public function getOffset()
 		{
-			$select_items = explode(',', $select_string);
-			$match_regex  = sprintf(
-				'#(%s)(?:\sas\s(%s))?#i',
-				$this->driver->getIdentifierRegex(),
-				$this->driver->getAliasRegex()
-			);
+			return $this->offset;
+		}
 
-			$this->resetSelect();
 
-			foreach ($select_items as $select_item) {
-				if (!preg_match($match_regex, $select_item, $matches)) {
-					throw new SyntaxException(
-						'Invalid select clause "%s" provided in query',
-						$select_string
-					);
-				}
+		/**
+		 *
+		 */
+		public function getSql()
+		{
+			return $this->sql;
+		}
 
-				if (!isset($matches[2])) {
-					$matches[2] = NULL;
-				}
 
-				$this->addSelect($matches[1], $matches[2], TRUE);
-			}
+		/**
+		 *
+		 */
+		public function setAction($action)
+		{
+			$this->action = strtoupper($action);
+		}
 
-			return this;
+
+		/**
+		 *
+		 */
+		public function setFrom($from)
+		{
+			$this->resetFrom();
+
+			$this->from = $from;
+
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		public function setJoin($join)
+		{
+			$this->resetJoin();
+
+			$this->join = $join;
+
+			return $this;
 		}
 
 
@@ -132,46 +204,68 @@
 		public function setLimit($limit)
 		{
 			$this->limit = $limit;
+
+			return $this;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function parse($full)
+		public function setOffset($offset)
 		{
-			$this->parseAction();
+			$this->offset = $offset;
 
-			if ($full) {
-				$this->query = NULL;
-			}
+			return $this;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function parseAction()
+		public function setOrder($order)
 		{
-			$regex = sprintf('#^(%s)\s+#i', $this->driver->getActionRegex());
+			$this->resetOrder();
 
-			if (!preg_match($regex, $this->query, $matches)) {
-				throw new SyntaxException(
-					'Invalid action specified in query "%s"',
-					$this->query
-				);
-			}
+			$this->order = $order;
 
-			$this->action = $matches[1];
+			return $this;
 		}
+
+
+		/**
+		 *
+		 */
+		public function setSelect($select)
+		{
+			$this->resetSelect();
+
+			$this->select = $select;
+
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		public function setWhere($where)
+		{
+			$this->resetWhere();
+
+			$this->where = $where;
+
+			return $this;
+		}
+
 
 		/**
 		 *
 		 */
 		protected function resetSelect()
 		{
-			$this->selectItems   = array();
-			$this->selectAliases = array();
+			$this->selectAliases     = array();
+			$this->selectIdentifiers = array();
 		}
 	}
 }

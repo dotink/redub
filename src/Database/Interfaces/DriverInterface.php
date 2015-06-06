@@ -5,6 +5,15 @@
 	 */
 	interface DriverInterface
 	{
-		public function run(ConnectionInterface $connection, $query);
+		/**
+		 *
+		 */
+		public function connect(ConnectionInterface $connection);
+
+
+		/**
+		 *
+		 */
+		public function run($cmd);
 	}
 }

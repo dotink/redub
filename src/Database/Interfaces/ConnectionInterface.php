@@ -5,7 +5,7 @@
 		/**
 		 *
 		 */
-		public function __construct($driver_alias, $config = array());
+		public function __construct($config = array(), DriverInterface $driver);
 
 
 		/**
@@ -17,12 +17,6 @@
 		/**
 		 *
 		 */
-		public function getDriverAlias();
-
-
-		/**
-		 *
-		 */
-		public function query($query);
+		public function execute($cmd);
 	}
 }
