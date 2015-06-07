@@ -10,7 +10,7 @@ ordering   = {
 [Person]
 identity   = id
 uniqueOn   = [
-	["team", "team_rank"]
+	["team", "teamRank"]
 ]
 
 	[Person.fields.id]
