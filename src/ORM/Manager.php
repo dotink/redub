@@ -124,7 +124,9 @@
 				$instance = new $class(...$params);
 			}
 
-			$this->reflectionData->setValue($instance, $this->configuration->getDefaults($class));
+			$defaults = $this->getConfiguration()->getDefaults($class);
+
+			$this->reflectionData->setValue($instance, $defaults);
 
 			return $instance;
 		}
@@ -135,7 +137,7 @@
 		 */
 		public function getDefaultOrdering($class)
 		{
-			return $this->configuration->getOrdering($class);
+			return $this->getConfiguration()->getOrdering($class);
 		}
 
 
@@ -150,7 +152,7 @@
 				// - if expiration time is in future call $this->configuration->load($cache);
 
 			} elseif ($this->configurationExpiration <= time()) {
-				$this->configurationExpiration = $this->configuration->read();
+				$this->configurationExpiration = $this->configuration->read($this);
 			}
 
 			return $this->configuration;

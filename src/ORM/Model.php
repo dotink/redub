@@ -22,6 +22,15 @@
 		protected function get($property)
 		{
 			$this->checkProperty($property, 'Cannot get property');
+
+			//
+			// TODO: if the property implements the "unresolved interface" then resolve it before
+			// sending it.  This will be used for associated models and collections which may not
+			// be used up front.  Unresolved objects will encapsulate all the information needed
+			// to instantiate their resolved counterparts.
+			//
+
+			return $this->data[$property];
 		}
 
 

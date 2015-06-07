@@ -1,5 +1,7 @@
 <?php namespace Redub\ORM
 {
+	use Dotink\Flourish;
+
 	/**
 	 *
 	 */
@@ -145,7 +147,7 @@
 				);
 			}
 
-			$this->mappings[$class][$field] = ($mapping === NULL)
+			$this->mappings[$class][$field] = ($mapping !== NULL)
 				? $this->convert($class, $field, 'FieldToMapping')
 				: $mapping;
 		}
@@ -158,6 +160,7 @@
 		{
 			$this->models[$class] = $model;
 		}
+
 
 		/**
 		 *
@@ -176,6 +179,14 @@
 			$this->collections[$class] = $collection;
 		}
 
+
+		/**
+		 *
+		 */
+		public function addUniqueOn($class, $constraint)
+		{
+
+		}
 
 		/**
 		 *
@@ -206,6 +217,16 @@
 				? $this->fields[$class]
 				: array();
 		}
+
+
+		/**
+		 *
+		 */
+		public function setIdentity($class, $identity)
+		{
+
+		}
+
 
 		/**
 		 *
@@ -256,10 +277,10 @@
 		protected function addConfig($config)
 		{
 			foreach ($config as $class => $class_config) {
-				if (isset($config['model']) || isset($config['convention'])) {
+				if (isset($class_config['model']) || isset($class_config['convention'])) {
 					$this->addRepositoryConfig($class, $class_config);
 
-				} elseif (isset($config['identity']) || isset($config['convention'])){
+				} elseif (isset($class_config['identity']) || isset($class_config['convention'])){
 					$this->addModelConfig($class, $class_config);
 
 				} else {
@@ -277,7 +298,7 @@
 		 */
 		protected function addFieldConfig($class, $field, $config)
 		{
-			$this->merge(static::$defaultFieldConfig, $config);
+			$config = $this->merge(static::$defaultFieldConfig, $config);
 
 			$this->addField($class, $field, $config['type']);
 			$this->addMapping($class, $field, $config['mapping']);
@@ -294,7 +315,7 @@
 		 */
 		protected function addModelConfig($class, $config)
 		{
-			$this->merge(static::$defaultModelConfig, $config);
+			$config = $this->merge(static::$defaultModelConfig, $config);
 
 			foreach ($config['fields'] as $field => $field_config) {
 				$this->addFieldConfig($class, $field, $field_config);
@@ -320,7 +341,7 @@
 		 */
 		protected function addRepositoryConfig($class, $config)
 		{
-			$this->merge(static::$defaultRepositoryConfig, $config);
+			$config = $this->merge(static::$defaultRepositoryConfig, $config);
 
 			$this->addModel($class, $config['model']);
 			$this->addRepository($class, $config['collection']);
@@ -331,15 +352,13 @@
 		/**
 		 *
 		 */
-		private function convert($class, $value, $type, $default)
+		private function convert($class, $value, $type)
 		{
 			// TODO: implemention converters... you should probably attempt to lookup
 			// and cache the converter during repository configuration, then just see if it's
 			// in the cache, if so ... use it ... if not, don't.
 			//
 			// The manager will allow for converters to be added.
-
-			return $default;
 		}
 
 		/**

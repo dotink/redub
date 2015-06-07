@@ -38,11 +38,11 @@
 		public function readConfiguration()
 		{
 			if (is_file($this->configPath)) {
-				$this->addConfiguration($this->readFile($this->configPath));
+				$this->addConfig($this->readFile($this->configPath));
 
 			} elseif (is_dir($this->configPath)) {
 				foreach ($this->readDirectory($this->configPath) as $configuration) {
-					$this->addConfiguration($configuration);
+					$this->addConfig($configuration);
 				}
 
 			} else {
