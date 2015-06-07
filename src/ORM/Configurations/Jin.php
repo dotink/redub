@@ -5,18 +5,27 @@
 	use Dotink\Jin\Parser;
 
 	/**
+	 * Jin configuration encapsulation
 	 *
 	 */
 	class Jin extends ORM\Configuration
 	{
 		/**
+		 * The filesystem path to the configuration
 		 *
+		 * @access protected
+		 * @var string
 		 */
-		protected $rawConfig = NULL;
+		protected $configPath = NULL;
 
 
 		/**
+		 * Create a new Jin based configuration
 		 *
+		 * @access public
+		 * @param string $config_path The path to a Jin config file or directory containing many
+		 * @param Parser $parser The Jin parser to use
+		 * @return void
 		 */
 		public function __construct($config_path, Parser $parser = NULL)
 		{
@@ -33,7 +42,10 @@
 
 
 		/**
+		 * Reads the configuration and adds it
 		 *
+		 * @access public
+		 * @return void
 		 */
 		public function readConfiguration()
 		{
@@ -55,7 +67,11 @@
 
 
 		/**
+		 * Reads a directory recursively
 		 *
+		 * @access protected
+		 * @param string $directory The directory from which to read
+		 * @return void
 		 */
 		protected function readDirectory($directory)
 		{
@@ -70,7 +86,11 @@
 
 
 		/**
+		 * Reads a Jin configuration file
 		 *
+		 * @access protected
+		 * @param string $file The file from which to read
+		 * @return array The configuration array
 		 */
 		protected function readFile($file)
 		{
