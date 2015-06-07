@@ -130,7 +130,6 @@
 
 			$this->fields[$class][$field]   = $type;
 			$this->defaults[$class][$field] = NULL;
-			$this->mappings[$class][$field] = strtolower($field);
 		}
 
 
@@ -147,8 +146,8 @@
 				);
 			}
 
-			$this->mappings[$class][$field] = ($mapping !== NULL)
-				? $this->convert($class, $field, 'FieldToMapping')
+			$this->mappings[$class][$field] = ($mapping === NULL)
+				? $this->convert($class, $field, 'FieldToMapping', strtolower($field))
 				: $mapping;
 		}
 
@@ -301,12 +300,19 @@
 			$config = $this->merge(static::$defaultFieldConfig, $config);
 
 			$this->addField($class, $field, $config['type']);
-			$this->addMapping($class, $field, $config['mapping']);
-			$this->addDefault($class, $field, $config['default']);
 			$this->setNullable($class, $field, $config['nullable']);
 
-			if ($config['unique']) {
-				$this->addUniqueOn($class, [$config['mapping']]);
+			if ($config['type'] == 'hasOne') {
+
+			} elseif ($config['type'] == 'hasMany') {
+
+			} else {
+				$this->addMapping($class, $field, $config['mapping']);
+				$this->addDefault($class, $field, $config['default']);
+
+				if ($config['unique']) {
+					$this->addUniqueOn($class, [$config['mapping']]);
+				}
 			}
 		}
 
@@ -352,13 +358,15 @@
 		/**
 		 *
 		 */
-		private function convert($class, $value, $type)
+		private function convert($class, $value, $type, $default)
 		{
 			// TODO: implemention converters... you should probably attempt to lookup
 			// and cache the converter during repository configuration, then just see if it's
 			// in the cache, if so ... use it ... if not, don't.
 			//
 			// The manager will allow for converters to be added.
+
+			return $default;
 		}
 
 		/**

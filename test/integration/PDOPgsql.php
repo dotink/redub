@@ -65,9 +65,6 @@
 		}
 	}
 
-
-	$start = microtime();
-
 	$driver	 = new Database\SQL\PDOPgsql();
 	$connection = new Database\Connection([
 		'driver' => 'pgsql',
@@ -87,7 +84,7 @@
 
 	$connection->execute("DROP TABLE names");
 
-	$mid = microtime();
+	$start = microtime();
 
 	$config  = new ORM\Configuration\Native();
 
@@ -96,8 +93,7 @@
 	$config->addField('Person', 'email',     'string');
 	$config->addField('Person', 'age',       'integer');
 
-	$parser     = new Parser(new Flourish\Collection());
-	$config     = new ORM\Configuration\Jin(__DIR__ . '/config', $parser);
+	$config     = new ORM\Configuration\Jin(__DIR__ . '/config', new Parser());
 	$manager    = new ORM\Manager($config);
 
 /*
@@ -106,13 +102,15 @@
 	$manager->addConvention($flourish);
 */
 
-
 	$person = $manager->create('Person');
+
 	$person->setFirstName('Matthew');
 	$person->setLastName('Sahagian');
-
 
 	$end = microtime();
 
 	echo $person->getFirstName() . PHP_EOL;
 	echo $person->getLastName()  . PHP_EOL;
+
+	echo microtime_diff($start, $end). PHP_EOL;
+	echo (memory_get_usage() / 1024 / 1024) . PHP_EOL;
