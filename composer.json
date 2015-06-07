@@ -18,7 +18,8 @@
 	],
 	"require": {
 		"php": ">=5.4.0",
-		"dotink/flourish-core": "dev-master"
+		"dotink/flourish-core": "dev-master",
+		"dotink/jin": "^1.1.0"
 	},
 	"autoload": {
 		"classmap": ["src/"]

@@ -47,9 +47,7 @@
 		 */
 		public function create(...$params)
 		{
-			$entity_name = $this->getEntityName();
-
-			return new $entity_name(...$params);
+			return $this->manager->create($this->getEntityName(), $params);
 		}
 
 
