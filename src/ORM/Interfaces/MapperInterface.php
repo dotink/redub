@@ -1,4 +1,4 @@
-<?php namespace Redub\Database
+<?php namespace Redub\ORM
 {
 	/**
 	 *

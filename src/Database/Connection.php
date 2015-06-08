@@ -39,12 +39,12 @@
 		/**
 		 *
 		 */
-		public function execute($cmd)
+		public function execute($statement)
 		{
 			if (!$this->driver) {
 				throw new Exception(
 					'Unable to execute (%s), no driver configured',
-					$cmd
+					$statement
 				);
 			}
 
@@ -56,8 +56,8 @@
 				);
 			}
 
-			if (!($cmd instanceof Query)) {
-				$query = new Query((string) $cmd, $this->driver->getPlatform());
+			if (!($statement instanceof Query)) {
+				$query = $this->driver->getPlatform()->parse(new Query((string) $statement));
 			}
 
 			return $this->driver->run($query);
@@ -85,7 +85,7 @@
 				return $this->config[$key];
 
 			} elseif (func_num_args() == 2) {
-				return $default;
+				return $this->config[$key] = $default;
 
 			} else {
 				throw new Flourish\ProgrammerException(
@@ -93,6 +93,15 @@
 					$key
 				);
 			}
+		}
+
+
+		/**
+		 *
+		 */
+		public function hasDriver()
+		{
+			return isset($this->driver);
 		}
 
 

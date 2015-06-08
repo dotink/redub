@@ -89,13 +89,18 @@
 		/**
 		 *
 		 */
-		public function __construct($sql = NULL, PlatformInterface $platform = NULL)
+		public function __construct($statement = NULL)
 		{
-			$this->sql = $sql;
+			$this->statement = $statement;
+		}
 
-			if ($platform) {
-				$platform->parse($this);
-			}
+
+		/**
+		 *
+		 */
+		public function __toString()
+		{
+			return $this->get();
 		}
 
 
@@ -157,9 +162,9 @@
 		/**
 		 *
 		 */
-		public function getSql()
+		public function get()
 		{
-			return $this->sql;
+			return $this->statement;
 		}
 
 

@@ -1,14 +1,25 @@
 <?php namespace Redub\ORM
 {
+	use Redub\Database\ConnectionInterface;
+	use Redub\Database\DriverInterface;
+
 	use Dotink\Flourish;
-	use Redub\Database;
 
 	use ReflectionClass;
 
+
+	/**
+	 *
+	 */
 	class Manager
 	{
 		const MODEL_CLASS  = 'Redub\ORM\Model';
 		const MAPPER_CLASS = 'Redub\ORM\Mapper';
+
+		/**
+		 *
+		 */
+		protected $bindings = array();
 
 		/**
 		 *
@@ -58,31 +69,35 @@
 		public function __construct(Configuration $configuration, Cache $cache = NULL)
 		{
 			$reflection_class     = new ReflectionClass(static::MODEL_CLASS);
-			$reflection_data      = $reflection_class->getProperty('data');
-			$this->reflectionData = $reflection_data;
+			$this->reflectionData = $reflection_class->getProperty('data');
 			$this->configuration  = $configuration;
 			$this->cache          = $cache;
 
-			$reflection_data->setAccessible(TRUE);
+			$this->reflectionData->setAccessible(TRUE);
 		}
 
 
 		/**
 		 *
 		 */
-		public function bind($alias, Database\DriverInterface $driver, MapperInterface $mapper)
+		public function bind($alias, DriverInterface $driver, MapperInterface $mapper)
 		{
-			$this->mappers[$alias] = $mapper;
-			$this->drivers[$alias] = $driver;
+			$mapper->setDriver($driver);
+			$mapper->setManager($this);
+
+			$this->bindings[$alias] = [
+				'driver' => $driver,
+				'mapper' => $mapper
+			];
 		}
 
 
 		/**
 		 *
 		 */
-		public function connect(Database\ConnectionInterface $connection, $namespace, $binding = NULL)
+		public function connect(ConnectionInterface $connection, $namespace = '')
 		{
-			$binding   = $connection->getConfig('binding', $binding);
+			$binding   = $connection->getConfig('binding');
 			$namespace = trim($namespace, '\\');
 
 			if (isset($this->connections[$namespace])) {
@@ -91,16 +106,20 @@
 					$this->connections[$namespace]->getAlias(),
 					$namespace
 				);
-
-			} elseif (!isset($this->drivers[$binding])) {
-				throw new Flourish\ProgrammerException(
-					'Connection "%s" could not be registered, "%s" is not a valid binding',
-					$binding
-				);
-
-			} else {
-				$connection->setDriver($this->drivers[$binding]);
 			}
+
+			if (!$connection->hasDriver()) {
+				if (!isset($this->bindings[$binding])) {
+					throw new Flourish\ProgrammerException(
+						'Connection "%s" could not be registered, "%s" is not a valid binding',
+						$binding
+					);
+				}
+
+				$connection->setDriver($this->bindings[$binding]['driver']);
+			}
+
+			$this->connections[$namespace] = $connection;
 		}
 
 
@@ -116,17 +135,60 @@
 				);
 			}
 
-			$reflection_class = $this->getReflectionClass($class);
-			$default_values   = $this->getConfiguration()->getDefaults($class);
-			$model_instance   = $reflection_class->newInstanceWithoutConstructor();
+			$mapper     = $this->getMapper($class);
+			$reflection = $this->getReflectionClass($class);
+			$entity     = $reflection->newInstanceWithoutConstructor();
 
-			$this->reflectionData->setValue($model_instance, $default_values);
+			$mapper->loadDefaultValues($class, $entity, $this->reflectionData);
 
-			if ($reflection_class->hasMethod('__construct')) {
-				$model_instance->__construct(...$params);
+			if ($reflection->hasMethod('__construct')) {
+				$entity->__construct(...$params);
 			}
 
-			return $model_instance;
+			return $entity;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getConfiguration()
+		{
+			if ($this->cache) {
+				// TODO: Implement caching
+				// - check global key for expiration time and set to configuration expiration time
+				// - if expiration time is in future call $this->configuration->load($cache);
+
+			} elseif ($this->configurationExpiration <= time()) {
+				$this->configurationExpiration = $this->configuration->read($this);
+
+			}
+
+			return $this->configuration;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getMapper($class)
+		{
+			if (!isset($this->mappers[$class])) {
+				$namespace = $this->getReflectionClass($class)->getNamespaceName();
+
+				if (!$this->connections[$namespace]) {
+					throw new Flourish\ProgrammerException(
+						'Could not find connection for namespace "%s"',
+						$namespace ?: '\\'
+					);
+				}
+
+				$this->connections[$class] = $this->connections[$namespace];
+				$connection_binding        = $this->connections[$class]->getConfig('binding');
+				$this->mappers[$class]     = $this->bindings[$connection_binding]['mapper'];
+			}
+
+			return $this->mappers[$class];
 		}
 
 
@@ -135,16 +197,6 @@
 		 */
 		public function load($class, $key, $return_empty)
 		{
-			$model_instance = class_exists($class)
-				? $this->loadFromIdentityMap($class, $key)
-				: $this->create($class);
-
-			// get driver for the class
-			// prepare a query
-			// create a new mapper, pass it the configuration, driver, query, class
-			//
-			// check if model is new instance, if so, load data from some place
-			//
 
 		}
 
@@ -155,24 +207,6 @@
 		public function loadCollection($class, $criteria)
 		{
 
-		}
-
-
-		/**
-		 *
-		 */
-		protected function getConfiguration()
-		{
-			if ($this->cache) {
-				// TODO: Implement caching
-				// - check global key for expiration time and set to configuration expiration time
-				// - if expiration time is in future call $this->configuration->load($cache);
-
-			} elseif ($this->configurationExpiration <= time()) {
-				$this->configurationExpiration = $this->configuration->read($this);
-			}
-
-			return $this->configuration;
 		}
 
 
@@ -194,20 +228,6 @@
 			}
 
 			return $this->reflectionClasses[$class];
-		}
-
-
-		/**
-		 *
-		 */
-		protected function loadFromIdentityMap($class, $key)
-		{
-			//
-			// Look in the identity map and if it's not here.
-			// create a new one and store it with the key.
-			//
-
-			return $this->create($class);
 		}
 	}
 }

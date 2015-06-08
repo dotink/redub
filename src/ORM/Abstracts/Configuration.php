@@ -306,6 +306,8 @@
 
 			} elseif ($config['type'] == 'hasMany') {
 
+				$this->addDefault($class, $field, new Collection());
+
 			} else {
 				$this->addMapping($class, $field, $config['mapping']);
 				$this->addDefault($class, $field, $config['default']);

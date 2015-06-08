@@ -41,6 +41,15 @@
 		/**
 		 *
 		 */
+		public function getGroups()
+		{
+			return $this->get('groups');
+		}
+
+
+		/**
+		 *
+		 */
 		public function getLastName()
 		{
 			return $this->get('lastName');
@@ -93,8 +102,17 @@
 	$config->addField('Person', 'email',     'string');
 	$config->addField('Person', 'age',       'integer');
 */
-	$config     = new ORM\Configuration\Jin(__DIR__ . '/config', new Parser());
-	$manager    = new ORM\Manager($config);
+	$config  = new ORM\Configuration\Jin(__DIR__ . '/config', new Parser());
+	$driver  = new Redub\Database\SQL\PDOPgsql();
+	$mapper  = new Redub\ORM\SQL\Mapper();
+	$manager = new ORM\Manager($config);
+
+	$manager->bind('pgsql', $driver, $mapper);
+	$manager->connect(new Redub\Database\Connection('default', [
+		'dbname'  => 'redub_test',
+		'binding' => 'pgsql'
+	]));
+
 
 /*
 	$flourish = new ORM\Convention\Flourish();
@@ -111,6 +129,8 @@
 
 	echo $person->getFirstName() . PHP_EOL;
 	echo $person->getLastName()  . PHP_EOL;
+
+	echo $person->getGroups()->count();
 
 	echo microtime_diff($start, $end). PHP_EOL;
 	echo (memory_get_usage() / 1024 / 1024) . PHP_EOL;

@@ -21,8 +21,8 @@
 		 */
 		public function compose(Database\Query $query)
 		{
-			if ($sql = $query->getSql()) {
-				return $sql;
+			if ($statement = $query->get()) {
+				return $statement;
 			}
 		}
 
@@ -32,6 +32,8 @@
 		 */
 		public function parse(Database\Query $query)
 		{
+			return $query;
+
 			/*
 
 			This need to be completed, for now we won't parse anything.
