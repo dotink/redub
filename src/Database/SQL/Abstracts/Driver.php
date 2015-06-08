@@ -7,7 +7,6 @@
 	 */
 	abstract class Driver implements Database\DriverInterface
 	{
-		const PLATFORM_CLASS   = NULL;
 		const RESULT_CLASS     = NULL;
 		const QUERY_CLASS      = NULL;
 
@@ -21,52 +20,16 @@
 		/**
 		 *
 		 */
-		public function prepareQuery($cmd)
+		public function __construct(Database\PlatformInterface $platform = NULL)
 		{
-			$query_class = static::QUERY_CLASS;
-
-			if (!is_a($cmd, $query_class)) {
-				$query = new $query_class((string) $cmd, $this->getPlatform());
-			}
-
-			return $query;
+			$this->platform = $platform;
 		}
 
 
 		/**
 		 *
 		 */
-		public function resolve(Query $query, $reply, $count)
-		{
-			$result_class  = static::RESULT_CLASS;
-			$result_object = new $result_class($reply, $count);
-
-			return $result_object;
-		}
-
-
-		/**
-		 *
-		 */
-		public function run($cmd)
-		{
-			$query = $this->prepareQuery($cmd);
-			$reply = $this->executeQuery($query);
-			$count = $this->executeCount($reply);
-
-			if (!$reply) {
-				$this->executeFailure($query, $reply, sprintf('Could not execute (%s)', $cmd));
-			}
-
-			return $this->resolve($query, $reply, $count);
-
-		}
-
-
-		/**
-		 *
-		 */
-		protected function getPlatform()
+		public function getPlatform()
 		{
 			if (!$this->platform) {
 				$class = static::PLATFORM_CLASS;
@@ -75,6 +38,35 @@
 			}
 
 			return $this->platform;
+		}
+
+
+		/**
+		 *
+		 */
+		public function resolve(Database\Query $query, $response, $count)
+		{
+			$result_class  = static::RESULT_CLASS;
+			$result_object = new $result_class($response, $count);
+
+			return $result_object;
+		}
+
+
+		/**
+		 *
+		 */
+		public function run(Database\Query $query)
+		{
+			$statement = $this->prepare($query);
+			$response  = $this->execute($statement);
+			$count     = $this->count($response);
+
+			if (!$response) {
+				$this->fail($response, 'Could not execute query');
+			}
+
+			return $this->resolve($query, $response, $count);
 		}
 	}
 }

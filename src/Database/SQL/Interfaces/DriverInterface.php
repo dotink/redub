@@ -16,19 +16,19 @@
 		/**
 		 *
 		 */
-		public function executeFailure(Query $query, $reply, $message);
+		public function executeFailure($response, $message);
 
 
 		/**
 		 *
 		 */
-		public function executeQuery(Query $query);
+		public function execute($statement);
 
 
 		/**
 		 *
 		 */
-		public function prepareQuery($cmd);
+		public function prepare(Database\Query $query);
 
 
 		/**

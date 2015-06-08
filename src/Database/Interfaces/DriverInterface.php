@@ -14,6 +14,12 @@
 		/**
 		 *
 		 */
-		public function run($cmd);
+		public function getPlatform();
+
+
+		/**
+		 *
+		 */
+		public function run(Query $query);
 	}
 }

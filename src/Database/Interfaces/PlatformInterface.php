@@ -1,7 +1,5 @@
-<?php namespace Redub\Database\SQL
+<?php namespace Redub\Database
 {
-	use Redub\Database;
-
 	/**
 	 *
 	 */

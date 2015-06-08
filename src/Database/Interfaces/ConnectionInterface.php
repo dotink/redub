@@ -5,7 +5,7 @@
 		/**
 		 *
 		 */
-		public function __construct($config = array(), DriverInterface $driver);
+		public function __construct($alias, $config = array(), DriverInterface $driver);
 
 
 		/**

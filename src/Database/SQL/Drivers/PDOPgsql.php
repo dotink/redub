@@ -6,9 +6,9 @@
 
 	class PDOPgsql extends Driver
 	{
-		const PLATFORM_CLASS   = 'Redub\Database\SQL\Pgsql';
-		const QUERY_CLASS      = 'Redub\Database\SQL\Query';
-		const RESULT_CLASS     = 'Redub\Database\PDOResult';
+		const PLATFORM_CLASS = 'Redub\Database\SQL\Pgsql';
+		const RESULT_CLASS   = 'Redub\Database\PDOResult';
+
 
 		/**
 		 *
@@ -26,6 +26,8 @@
 		public function connect(Database\ConnectionInterface $connection)
 		{
 			if (!$this->pdo) {
+				$this->validateConnection($connection);
+
 				try {
 					$this->pdo = new PDO(
 						$this->createDSN($connection),
@@ -45,7 +47,7 @@
 		/**
 		 *
 		 */
-		public function executeCount($result)
+		public function count($result)
 		{
 			return $result
 				? $result->rowCount()
@@ -56,7 +58,7 @@
 		/**
 		 *
 		 */
-		public function executeFailure($query, $result, $message)
+		public function fail($response, $message)
 		{
 			$error_info = $this->pdo->errorInfo();
 
@@ -73,12 +75,18 @@
 		/**
 		 *
 		 */
-		public function executeQuery($query)
+		public function execute($statement)
 		{
-			$platform  = $this->getPlatform();
-			$statement = $platform->compose($query);
-
 			return $this->pdo->query($statement);
+		}
+
+
+		/**
+		 *
+		 */
+		public function prepare(Database\Query $query)
+		{
+			return $this->getPlatform()->compose($query);
 		}
 
 
@@ -97,6 +105,22 @@
 				$connection->getConfig('port', 5432),
 				$connection->getConfig('dbname')
 			);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function validateConnection(Database\ConnectionInterface $connection)
+		{
+			$config = $connection->getConfig();
+
+			if (!isset($config['dbname'])) {
+				throw new Flourish\ProgrammerException(
+					'Cannot complete connection "%s", missing database name',
+					$connection->getAlias()
+				);
+			}
 		}
 	}
 }

@@ -7,7 +7,8 @@
 
 	class Manager
 	{
-		const MODEL_CLASS = 'Redub\ORM\Model';
+		const MODEL_CLASS  = 'Redub\ORM\Model';
+		const MAPPER_CLASS = 'Redub\ORM\Mapper';
 
 		/**
 		 *
@@ -36,6 +37,12 @@
 		/**
 		 *
 		 */
+		protected $mappers = array();
+
+
+		/**
+		 *
+		 */
 		protected $reflectionClasses = array();
 
 
@@ -50,22 +57,22 @@
 		 */
 		public function __construct(Configuration $configuration, Cache $cache = NULL)
 		{
-			$reflection_class    = new ReflectionClass(static::MODEL_CLASS);
-			$reflection_data     = $reflection_class->getProperty('data');
-
-			$reflection_data->setAccessible(TRUE);
-
+			$reflection_class     = new ReflectionClass(static::MODEL_CLASS);
+			$reflection_data      = $reflection_class->getProperty('data');
 			$this->reflectionData = $reflection_data;
 			$this->configuration  = $configuration;
 			$this->cache          = $cache;
+
+			$reflection_data->setAccessible(TRUE);
 		}
 
 
 		/**
 		 *
 		 */
-		public function setup(Database\DriverInterface $driver, $alias)
+		public function bind($alias, Database\DriverInterface $driver, MapperInterface $mapper)
 		{
+			$this->mappers[$alias] = $mapper;
 			$this->drivers[$alias] = $driver;
 		}
 
@@ -73,24 +80,27 @@
 		/**
 		 *
 		 */
-		public function connect(Database\ConnectionInterface $connection, $namespace)
+		public function connect(Database\ConnectionInterface $connection, $namespace, $binding = NULL)
 		{
-			$driver_alias  = $connection->getConfig('driver');
-			$connection_ns = trim($namespace, '\\');
+			$binding   = $connection->getConfig('binding', $binding);
+			$namespace = trim($namespace, '\\');
 
-			if (!in_array($connection, $this->connections)) {
-				if (isset($this->drivers[$driver_alias])) {
-					$connection->setDriver($this->drivers[$driver_alias]);
+			if (isset($this->connections[$namespace])) {
+				throw new Flourish\ProgrammerException(
+					'Connection "%s" has already been configured for namespace "%s"',
+					$this->connections[$namespace]->getAlias(),
+					$namespace
+				);
 
-				} else {
-					throw new Flourish\ProgrammerException(
-						'No valid driver could be found for the connection, driver "%s"',
-						$driver_alias
-					);
-				}
+			} elseif (!isset($this->drivers[$binding])) {
+				throw new Flourish\ProgrammerException(
+					'Connection "%s" could not be registered, "%s" is not a valid binding',
+					$binding
+				);
+
+			} else {
+				$connection->setDriver($this->drivers[$binding]);
 			}
-
-			$this->connections[$connection_ns] = $connection;
 		}
 
 
@@ -107,37 +117,44 @@
 			}
 
 			$reflection_class = $this->getReflectionClass($class);
+			$default_values   = $this->getConfiguration()->getDefaults($class);
+			$model_instance   = $reflection_class->newInstanceWithoutConstructor();
 
-			if (!$reflection_class->isSubclassOf(static::MODEL_CLASS)) {
-				throw new Flourish\ProgrammerException(
-					'Cannot instantiate class which does not extend model class %s for class %s',
-					static::MODEL_CLASS,
-					$class
-				);
-			}
+			$this->reflectionData->setValue($model_instance, $default_values);
 
 			if ($reflection_class->hasMethod('__construct')) {
-				$instance = $reflection_class->newInstanceWithoutConstructor();
-				$instance->__construct(...$params);
-
-			} else {
-				$instance = new $class(...$params);
+				$model_instance->__construct(...$params);
 			}
 
-			$defaults = $this->getConfiguration()->getDefaults($class);
-
-			$this->reflectionData->setValue($instance, $defaults);
-
-			return $instance;
+			return $model_instance;
 		}
 
 
 		/**
 		 *
 		 */
-		public function getDefaultOrdering($class)
+		public function load($class, $key, $return_empty)
 		{
-			return $this->getConfiguration()->getOrdering($class);
+			$model_instance = class_exists($class)
+				? $this->loadFromIdentityMap($class, $key)
+				: $this->create($class);
+
+			// get driver for the class
+			// prepare a query
+			// create a new mapper, pass it the configuration, driver, query, class
+			//
+			// check if model is new instance, if so, load data from some place
+			//
+
+		}
+
+
+		/**
+		 *
+		 */
+		public function loadCollection($class, $criteria)
+		{
+
 		}
 
 
@@ -168,7 +185,29 @@
 				$this->reflectionClasses[$class] = new ReflectionClass($class);
 			}
 
+			if (!$this->reflectionClasses[$class]->isSubclassOf(static::MODEL_CLASS)) {
+				throw new Flourish\ProgrammerException(
+					'Cannot instantiate class which does not extend model class %s for class %s',
+					static::MODEL_CLASS,
+					$class
+				);
+			}
+
 			return $this->reflectionClasses[$class];
+		}
+
+
+		/**
+		 *
+		 */
+		protected function loadFromIdentityMap($class, $key)
+		{
+			//
+			// Look in the identity map and if it's not here.
+			// create a new one and store it with the key.
+			//
+
+			return $this->create($class);
 		}
 	}
 }

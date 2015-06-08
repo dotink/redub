@@ -1,4 +1,4 @@
-<?php namespace Redub\Database\SQL
+<?php namespace Redub\Database
 {
 	class Query
 	{

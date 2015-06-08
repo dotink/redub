@@ -65,8 +65,8 @@
 		}
 	}
 
-	$driver	 = new Database\SQL\PDOPgsql();
-	$connection = new Database\Connection([
+	$driver	    = new Database\SQL\PDOPgsql();
+	$connection = new Database\Connection('default', [
 		'driver' => 'pgsql',
 		'dbname' => 'redub_test',
 	], $driver);
@@ -84,15 +84,15 @@
 
 	$connection->execute("DROP TABLE names");
 
-	$start = microtime();
-
-	$config  = new ORM\Configuration\Native();
+	$start  = microtime();
+/*
+	$config = new ORM\Configuration\Native();
 
 	$config->addField('Person', 'firstName', 'string');
 	$config->addField('Person', 'lastName',  'string');
 	$config->addField('Person', 'email',     'string');
 	$config->addField('Person', 'age',       'integer');
-
+*/
 	$config     = new ORM\Configuration\Jin(__DIR__ . '/config', new Parser());
 	$manager    = new ORM\Manager($config);
 

@@ -1,9 +1,11 @@
 <?php namespace Redub\Database\SQL
 {
+	use Redub\Database;
+
 	/**
 	 *
 	 */
-	abstract class Platform implements PlatformInterface
+	abstract class Platform implements Database\PlatformInterface
 	{
 		const TOKEN_FORMAT     = '{#T-%d#}';
 
@@ -17,7 +19,7 @@
 		/**
 		 *
 		 */
-		public function compose(Query $query)
+		public function compose(Database\Query $query)
 		{
 			if ($sql = $query->getSql()) {
 				return $sql;
@@ -28,7 +30,7 @@
 		/**
 		 *
 		 */
-		public function parse(Query $query)
+		public function parse(Database\Query $query)
 		{
 			/*
 
@@ -64,54 +66,6 @@
 
 
 			*/
-		}
-
-
-		/**
-		 *
-		 */
-		protected function parseAction($query, $tokenized_query)
-		{
-			$regex = sprintf('#^%s\s+#i', static::REGEX_ACTION);
-
-			if (!preg_match($regex, $tokenized_query, $matches)) {
-				throw new SyntaxException(
-					'Invalid action specified in query "%s"',
-					$query->getSql()
-				);
-			}
-
-			return $matches[1];
-		}
-
-
-		/**
-		 *
-		 */
-		public function parseLimit()
-		{
-			$regex = sprintf('#\s+%s#i', $this->driver->getLimitRegex());
-
-			if (preg_match($regex, $this->query, $matches)) {
-				return $matches[1];
-			}
-
-			return NULL;
-		}
-
-
-		/**
-		 *
-		 */
-		protected function parseOffset()
-		{
-			$regex = sprintf('#\s+%s#i', $this->driver->getOffsetRegex());
-
-			if (preg_match($regex, $this->query, $matches)) {
-				return $matches[1];
-			}
-
-			return NULL;
 		}
 	}
 }

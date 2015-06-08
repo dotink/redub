@@ -35,7 +35,7 @@
 
 			$builder($criteria);
 
-			return $this->manager->createCollection(
+			return $this->manager->loadCollection(
 				$this->getEntityName(),
 				$criteria
 			);
@@ -84,7 +84,7 @@
 			$criteria->limit($limit);
 			$criteria->page($page);
 
-			return $this->manager->createCollection(
+			return $this->manager->loadCollection(
 				$this->getEntityName(),
 				$criteria
 			);
@@ -101,13 +101,7 @@
 		 */
 		public function find($key, $create_empty = FALSE)
 		{
-			$entity = $this->manager->find($this->getEntityName(), $key);
-
-			if (!$entity && $create_empty) {
-				return $this->create();
-			}
-
-			return $entity;
+			return $this->manager->load($this->getEntityName(), $key, $create_empty);
 		}
 
 

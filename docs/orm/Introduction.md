@@ -6,13 +6,13 @@ FUNCTIONALITY AND MAY REPRESENT PLANNED INTERFACES AND FEATURES**
 ## Manager
 
 ```php
-$manager    = new Redub\ORM\Manager($config);
+$config     = new Redub\ORM\Configuration\Jin($path_to_configs);
+$manager    = new Redub\ORM\Manager($config, /* optional cache */);
 $driver     = new Redub\Database\SQL\PDOPgsql();
-$connection = new Redub\Database\Connection([
-	'driver' => 'pgsql',
-	'dbname' => 'redub_test'
-]);
+$mapper     = new Redub\ORM\SQL\Mapper();
 
-$manager->setup($driver, 'pgsql');
-$manager->connect($connection);
-```
+$manager->bind('pgsql', $database, $mapper);
+$manager->connect(new Redub\Database\Connection('default', [
+	'dbname'  => 'redub_test',
+	'binding' => 'pgsql'
+]));

@@ -10,6 +10,12 @@
 		/**
 		 *
 		 */
+		protected $alias = NULL;
+
+
+		/**
+		 *
+		 */
 		protected $driver = NULL;
 
 
@@ -22,14 +28,9 @@
 		/**
 		 *
 		 */
-		public function __construct($config = array(), DriverInterface $driver = NULL)
+		public function __construct($alias, $config = array(), DriverInterface $driver = NULL)
 		{
-			if (!isset($config['driver']) && !isset($config['dbname'])) {
-				throw new Flourish\ProgrammerException(
-					'Cannot create connection with missing driver or database name.'
-				);
-			}
-
+			$this->alias  = $alias;
 			$this->config = $config;
 			$this->driver = $driver;
 		}
@@ -49,15 +50,27 @@
 
 			if (!$this->driver->connect($this)) {
 				throw new Exception(
-					'Unable to connect to database "%s" using driver "%s"',
+					'Unable to connect to database "%s" on connection "%s"',
 					$this->getConfig('dbname'),
-					$this->getConfig('driver')
+					$this->alias
 				);
 			}
 
-			return $this->driver->run($cmd);
+			if (!($cmd instanceof Query)) {
+				$query = new Query((string) $cmd, $this->driver->getPlatform());
+			}
+
+			return $this->driver->run($query);
 		}
 
+
+		/**
+		 *
+		 */
+		public function getAlias()
+		{
+			return $this->alias;
+		}
 
 
 		/**
