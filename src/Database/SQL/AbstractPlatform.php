@@ -6,7 +6,7 @@
 	/**
 	 *
 	 */
-	abstract class AbstractPlatform extends Database\AbstractPlatform
+	abstract class AbstractPlatform implements Database\PlatformInterface
 	{
 		const PLATFORM_NAME = 'SQL';
 		const WILDCARD      = '%';

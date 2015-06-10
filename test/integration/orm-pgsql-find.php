@@ -36,8 +36,8 @@
 		$connection->execute("DROP TABLE people");
 	});
 
-	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Matthew','Sahagian')");
 	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Allison', NULL)");
+	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Matthew','Sahagian')");
 	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Jeff', 'Turcotte')");
 
 	$people = new People($manager);

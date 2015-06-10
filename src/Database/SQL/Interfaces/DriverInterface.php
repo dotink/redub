@@ -29,5 +29,11 @@
 		 *
 		 */
 		public function prepare($handle, Database\Query $query);
+
+
+		/**
+		 *
+		 */
+		public function resolve(Database\Query $query, $response, $count);
 	}
 }
