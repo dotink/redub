@@ -65,7 +65,7 @@
 		 */
 		public function execute($handle, $statement)
 		{
-			if ($statement->execute()) {
+			if ($statement->execute() !== FALSE) {
 				return $statement;
 
 			} else {
@@ -98,7 +98,7 @@
 		{
 			$query->setPrepared(TRUE);
 
-			$statement = $this->getPlatform()->compose($query, '$%d', static::PLACEHOLDER_START);
+			$statement = $this->getPlatform()->compose($query, '?', static::PLACEHOLDER_START);
 			$statement = $handle->prepare($statement);
 
 			foreach ($query->getParams() as $index => $value) {

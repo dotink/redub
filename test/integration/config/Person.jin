@@ -1,7 +1,7 @@
 [People]
-convention = Flourish
-collection = people
 model      = Person
+mapsTo     = people
+convention = Flourish
 ordering   = {
 	"lastName"  : "asc",
 	"firstName" : "asc"
@@ -14,25 +14,25 @@ uniqueOn   = [
 ]
 
 	[Person.fields.id]
-	type	  = integer
-	mapping	  = id
+	type      = integer
 	generator = native
+	mapsTo    = id
 
 	[Person.fields.firstName]
-	type	 = string
-	mapping  = first_name
+	type     = string
 	nullable = FALSE
+	mapsTo   = first_name
 
 	[Person.fields.lastName]
-	type	 = string
-	mapping  = last_name
+	type     = string
 	nullable = TRUE
+	mapsTo   = last_name
 
 	; Example of one-to-many
 
 	[Person.fields.emailAddresses]
-	target = EmailAddress
 	type   = hasMany
+	target = EmailAddress
 	unique = TRUE
 	order  = {
 		"priority" : "asc"
@@ -44,9 +44,8 @@ uniqueOn   = [
 	; Example of many-to-one
 
 	[Person.fields.team]
-	target  = Team
 	type    = hasOne
-	mapping = team
+	target  = Team
 	default = {
 		"name ==": "Interns"
 	}
@@ -56,14 +55,14 @@ uniqueOn   = [
 
 	[Person.fields.teamRank]
 	type    = integer
-	mapping = team_rank
 	default = NULL
+	mapsTo  = team_rank
 
 	; Example of one-to-one
 
 	[Person.fields.user]
-	target = User
 	type   = hasOne
+	target = User
 	unique = TRUE
 	route  = {
 		"id" : "person"
@@ -71,15 +70,13 @@ uniqueOn   = [
 
 	[Person.fields.authLevel]
 	type    = string
-	target  = User
-	mapping = authLevel
-
+	target  = user.authLevel
 
 	; Example of many-to-many
 
 	[Person.fields.groups]
-	target  = Group
 	type    = hasMany
+	target  = Group
 	default = {
 		"default ==": TRUE
 	}

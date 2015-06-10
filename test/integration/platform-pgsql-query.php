@@ -60,11 +60,14 @@
 	// Alias
 	//
 
+	$criteria = new Database\Criteria();
+
 	$query
 		-> perform('select', [
 			'p.id', 'p.first_name', 'p.last_name'
 		])
-		-> on(['people' => 'p']);
+		-> on(['people' => 'p'])
+		-> using($criteria->where('p.id ==', 1));
 
 	echo $driver->getPlatform()->compose($query) . PHP_EOL;
 

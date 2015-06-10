@@ -5,7 +5,7 @@
 	/**
 	 *
 	 */
-	abstract class Configuration
+	abstract class AbstractConfiguration
 	{
 		/**
 		 *

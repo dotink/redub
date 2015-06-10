@@ -72,7 +72,7 @@
 		 * @param Query $query The query to compose
 		 * @return mixed The executable statement for a driver using this platform
 		 */
-		public function compose(Database\Query $query, $placeholder = '?', $start = 1)
+		public function compose(Database\Query $query, $placeholder = '$%d', $start = 1)
 		{
 			if ($query->get()) {
 				return $query->get();
@@ -132,7 +132,7 @@
 		{
 			$columns = array();
 
-			foreach ($query->getActionArgs() as $key => $value) {
+			foreach ($query->getArguments() as $key => $value) {
 				if (!is_string($value)) {
 					throw new Flourish\ProgrammerException(
 						'Cannot compose query with columns of non-string values'
@@ -161,7 +161,6 @@
 		protected function composeCriteria($query, $placeholder)
 		{
 			$criterias  = $query->getCriteria();
-			$joins      = $query->getCriteriaJoins();
 			$conditions = '';
 
 			foreach ($criterias as $index => $criteria) {
@@ -177,9 +176,8 @@
 					$parts[] = $this->makeCondition($query, $placeholder, $clause, $value);
 				}
 
-				$conditions .= sprintf(
-					'(%s)',
-					implode(' ' . $joins[$index] . ' ', $parts)
+				$conditions .= sprintf('(%s)',
+					implode(' ' . $query->getGlue($index) . ' ', $parts)
 				);
 			}
 
@@ -262,25 +260,30 @@
 		 */
 		protected function composeSelectFrom($query, $placeholder)
 		{
-			$tables      = array();
-			$collections = $query->getCollections();
+			$collection = $query->getCollection();
 
-			foreach ($collections as $key => $value) {
-				if (!is_string($value)) {
-					throw new Flourish\ProgrammerException(
-						'Cannot compose tables in FROM clause with non-string repository value'
-					);
-				}
+			if (!is_array($collection)) {
+				$table = $this->escapeIdentifier(
+					$collection,
+					$query->isPrepared()
+				);
 
-				$tables[] = is_int($key)
-					? $this->escapeIdentifier($value, $query->isPrepared())
-					: $this->makeTableWithAlias($query, $placeholder, $key, $value);
+			} elseif (!is_numeric(key($collection))) {
+				$table = $this->makeTableWithAlias(
+					$query,
+					$placeholder,
+					key($collection),
+					current($collection)
+				);
+
+			} else {
+				throw new Flourish\ProgrammerException(
+					'Cannot compose tables in FROM clause with malformed collection value',
+					$collection
+				);
 			}
 
-			return sprintf('FROM %s %s',
-				implode(',', $tables),
-				$this->composeJoins($query, $placeholder)
-			);
+			return sprintf('FROM %s %s', $table, $this->composeJoins($query, $placeholder));
 		}
 
 		/**
@@ -321,14 +324,14 @@
 		 */
 		protected function composeSelect($query, $placeholder)
 		{
-			return sprintf(
+			return trim(sprintf(
 				'SELECT %s %s %s %s %s',
 				$this->composeColumns ($query, $placeholder),
 				$this->composeFrom    ($query, $placeholder),
 				$this->composeWhere   ($query, $placeholder),
 				$this->composeLimit   ($query, $placeholder),
 				$this->composeOffset  ($query, $placeholder)
-			);
+			));
 		}
 
 

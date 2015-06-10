@@ -3,7 +3,7 @@
 	/**
 	 *
 	 */
-	class Query
+	class Query extends Criteria
 	{
 		/**
 		 *
@@ -14,7 +14,7 @@
 		/**
 		 *
 		 */
-		protected $actionArgs = array();
+		protected $arguments = array();
 
 
 		/**
@@ -26,13 +26,7 @@
 		/**
 		 *
 		 */
-		protected $criteriaJoins = array();
-
-
-		/**
-		 *
-		 */
-		protected $statement = NULL;
+		protected $glue = array();
 
 
 		/**
@@ -68,6 +62,12 @@
 		/**
 		 *
 		 */
+		protected $statement = NULL;
+
+
+		/**
+		 *
+		 */
 		public function __construct($statement = NULL, array $params = array())
 		{
 			$this->statement = $statement;
@@ -96,12 +96,26 @@
 		/**
 		 *
 		 */
+		public function addParam($value, $index = NULL)
+		{
+			if ($index !== NULL) {
+				$this->params[$index] = $value;
+			} else {
+				$this->params[] = $value;
+			}
+
+		}
+
+
+		/**
+		 *
+		 */
 		public function andWhere($condition, $value)
 		{
 			$this->reset();
 
 			$this->criteria[] = 'AND';
-			$this->criteria[] = $this->makeJoinCriteria($condition, $value);
+			$this->criteria[] = $this->glue($condition, $value);
 
 			return $this;
 		}
@@ -141,9 +155,18 @@
 		/**
 		 *
 		 */
-		public function getActionArgs()
+		public function getArguments()
 		{
-			return $this->actionArgs;
+			return $this->arguments;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getCollection()
+		{
+			return $this->collection;
 		}
 
 
@@ -159,9 +182,13 @@
 		/**
 		 *
 		 */
-		public function getCriteriaJoins()
+		public function getGlue($index)
 		{
-			return $this->criteriaJoins;
+			if (isset($this->glue[$index])) {
+				return $this->glue[$index];
+			}
+
+			return 'AND';
 		}
 
 
@@ -186,15 +213,6 @@
 		/**
 		 *
 		 */
-		public function getParams()
-		{
-			return $this->params;
-		}
-
-
-		/**
-		 *
-		 */
 		public function getOffset()
 		{
 			return $this->offset;
@@ -204,9 +222,9 @@
 		/**
 		 *
 		 */
-		public function getCollections()
+		public function getParams()
 		{
-			return $this->collections;
+			return $this->params;
 		}
 
 
@@ -248,14 +266,12 @@
 		/**
 		 *
 		 */
-		public function on($collections, array $links = array())
+		public function on($collection, array $links = array())
 		{
 			$this->reset();
 
-			settype($collections, 'array');
-
-			$this->collections = $collections;
-			$this->links       = $links;
+			$this->collection = $collection;
+			$this->links      = $links;
 
 			return $this;
 		}
@@ -269,7 +285,7 @@
 			$this->reset();
 
 			$this->criteria[] = 'OR';
-			$this->criteria[] = $this->makeJoinCriteria($condition, $value);
+			$this->criteria[] = $this->glue($condition, $value);
 
 			return $this;
 		}
@@ -283,7 +299,7 @@
 			$this->reset();
 
 			$this->action     = $action;
-			$this->actionArgs = $args;
+			$this->arguments = $args;
 
 			return $this;
 		}
@@ -292,14 +308,26 @@
 		/**
 		 *
 		 */
-		public function addParam($value, $index = NULL)
+		public function setAction($action)
 		{
-			if ($index !== NULL) {
-				$this->params[$index] = $value;
-			} else {
-				$this->params[] = $value;
-			}
+			$this->reset();
 
+			$this->action = $action;
+
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		public function setArguments(array $arguments = array())
+		{
+			$this->reset();
+
+			$this->arguments = $arguments;
+
+			return $this;
 		}
 
 
@@ -325,12 +353,16 @@
 		/**
 		 *
 		 */
-		public function where($condition, $value)
+		public function using(Criteria $criteria)
 		{
 			$this->reset();
 
 			$this->criteria   = array();
-			$this->criteria[] = $this->makeJoinCriteria($condition, $value);
+			$this->criteria[] = $criteria->criteria;
+
+			if (count($criteria->arguments)) {
+				$this->arguments = $criteria->arguments;
+			}
 
 			return $this;
 		}
@@ -339,7 +371,42 @@
 		/**
 		 *
 		 */
-		protected function makeJoinCriteria($condition, $value)
+		public function where($condition)
+		{
+			$this->reset();
+
+			if (func_num_args() != 2) {
+				$condition = NULL;
+				$value     = array();
+
+			} else {
+				$value = func_get_arg(1);
+			}
+
+			$this->criteria   = array();
+			$this->criteria[] = $this->glue($condition, $value);
+
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		public function with(array $arguments = array())
+		{
+			$this->reset();
+
+			$this->arguments = $args;
+
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		protected function glue($condition, $value)
 		{
 			if (is_array($value)) {
 				if (!in_array($condition, ['any', 'all'])) {
@@ -348,7 +415,7 @@
 					);
 				}
 
-				$this->criteriaJoins[count($this->criteria)] = $condition == 'all'
+				$this->glue[count($this->criteria)] = $condition == 'all'
 					? 'AND'
 					: 'OR';
 
@@ -356,7 +423,7 @@
 
 			}
 
-			$this->criteriaJoins[count($this->criteria)] = 'AND';
+			$this->glue[count($this->criteria)] = 'AND';
 
 			return [$condition => $value];
 		}
