@@ -5,7 +5,7 @@
 
 	use Dotink\Flourish;
 
-	use ReflectionClass;
+	use ReflectionClass as Reflector;
 
 
 	/**
@@ -15,6 +15,18 @@
 	{
 		const MODEL_CLASS  = 'Redub\ORM\Model';
 		const MAPPER_CLASS = 'Redub\ORM\Mapper';
+
+		/**
+		 *
+		 */
+		static protected $reflections = array();
+
+
+		/**
+		 *
+		 */
+		static protected $reflector = NULL;
+
 
 		/**
 		 *
@@ -54,26 +66,36 @@
 		/**
 		 *
 		 */
-		protected $reflectionClasses = array();
-
-
-		/**
-		 *
-		 */
-		protected $reflectionData = NULL;
-
-
-		/**
-		 *
-		 */
-		public function __construct(Configuration $configuration, Cache $cache = NULL)
+		static protected function getReflection($class)
 		{
-			$reflection_class     = new ReflectionClass(static::MODEL_CLASS);
-			$this->reflectionData = $reflection_class->getProperty('data');
-			$this->configuration  = $configuration;
-			$this->cache          = $cache;
+			if (!isset(static::$reflections[$class])) {
+				static::$reflections[$class] = new Reflector($class);
 
-			$this->reflectionData->setAccessible(TRUE);
+				if (!static::$reflections[$class]->isSubclassOf(static::MODEL_CLASS)) {
+					throw new Flourish\ProgrammerException(
+						'Cannot reflect non-child of "%s", the class "%s" is not a model',
+						static::MODEL_CLASS,
+						$class
+					);
+				}
+			}
+
+			return static::$reflections[$class];
+		}
+
+
+		/**
+		 *
+		 */
+		public function __construct(Configuration $configuration = NULL, Cache $cache = NULL)
+		{
+			if (!static::$reflector) {
+				static::$reflector = (new Reflector(static::MODEL_CLASS))->getProperty('data');
+				static::$reflector->setAccessible(TRUE);
+			}
+
+			$this->configuration = $configuration ?: new Configuration\Native();
+			$this->cache         = $cache;
 		}
 
 
@@ -126,22 +148,14 @@
 		/**
 		 *
 		 */
-		public function create($class, $params = array())
+		public function create($repository, $params = array())
 		{
-			if (!class_exists($class)) {
-				throw new Flourish\ProgrammerException(
-					'Unable to create instance of %s, class does not exist',
-					$class
-				);
-			}
+			$entity = $this->initializeEntity('create', $repository);
+			$mapper = $this->getMapper(get_class($entity));
 
-			$mapper     = $this->getMapper($class);
-			$reflection = $this->getReflectionClass($class);
-			$entity     = $reflection->newInstanceWithoutConstructor();
+			$mapper->loadDefaultValues($entity, static::$reflector);
 
-			$mapper->loadDefaultValues($class, $entity, $this->reflectionData);
-
-			if ($reflection->hasMethod('__construct')) {
+			if (is_callable([$entity, '__construct'])) {
 				$entity->__construct(...$params);
 			}
 
@@ -171,21 +185,32 @@
 		/**
 		 *
 		 */
+		public function getConnection($class)
+		{
+			$namespace = $this->getReflection($class)->getNamespaceName();
+
+			if (!$this->connections[$namespace]) {
+				throw new Flourish\ProgrammerException(
+					'Could not find connection for namespace "%s"',
+					$namespace ?: '\\'
+				);
+			}
+
+			return $this->connections[$namespace];
+		}
+
+
+		/**
+		 * Gets the appropriate mapper for a given class (based on namespace bindings)
+		 *
+		 * @return Mapper The mapper for the class
+		 *
+		 */
 		public function getMapper($class)
 		{
 			if (!isset($this->mappers[$class])) {
-				$namespace = $this->getReflectionClass($class)->getNamespaceName();
-
-				if (!$this->connections[$namespace]) {
-					throw new Flourish\ProgrammerException(
-						'Could not find connection for namespace "%s"',
-						$namespace ?: '\\'
-					);
-				}
-
-				$this->connections[$class] = $this->connections[$namespace];
-				$connection_binding        = $this->connections[$class]->getConfig('binding');
-				$this->mappers[$class]     = $this->bindings[$connection_binding]['mapper'];
+				$connection_binding    = $this->getConnection($class)->getConfig('binding');
+				$this->mappers[$class] = $this->bindings[$connection_binding]['mapper'];
 			}
 
 			return $this->mappers[$class];
@@ -193,41 +218,70 @@
 
 
 		/**
+		 * Gets the model for a repository
 		 *
+		 * @access public
+		 * @param Repository $repository The repository for which to get the model
+		 * @return string The model for the repository
 		 */
-		public function load($class, $key, $return_empty)
+		public function getModel($repository)
 		{
+			$repo_class  = get_class($repository);
+			$model_class = $this->getConfiguration()->getModel($repo_class);
 
-		}
-
-
-		/**
-		 *
-		 */
-		public function loadCollection($class, $criteria)
-		{
-
-		}
-
-
-		/**
-		 *
-		 */
-		protected function getReflectionClass($class)
-		{
-			if (!isset($this->reflectionClasses[$class])) {
-				$this->reflectionClasses[$class] = new ReflectionClass($class);
+			if ($model_class) {
+				return $model_class;
 			}
 
-			if (!$this->reflectionClasses[$class]->isSubclassOf(static::MODEL_CLASS)) {
+			//
+			// TODO: Attempt to auto scaffold model
+			//
+		}
+
+
+		/**
+		 *
+		 */
+		public function loadCollection($repository, $criteria)
+		{
+
+		}
+
+
+		/**
+		 *
+		 */
+		public function loadEntity($repository, $key, $return_empty)
+		{
+			$entity = $this->initializeEntity('load', $repository);
+			$mapper = $this->getMapper(get_class($entity));
+
+			if (!$mapper->loadEntityFromKey($entity, $key, static::$reflector)) {
+
+			}
+		}
+
+
+		/**
+		 * Initializes an entity (but does not construct) by using a model's reflection class
+		 *
+		 * @access protected
+		 * @param Reflector $reflection The reflection for the model
+		 * @return Model The entity instance prior to constructor execution
+		 */
+		protected function initializeEntity($action, $repository)
+		{
+			$model = $this->getModel($repository);
+
+			if (!$model) {
 				throw new Flourish\ProgrammerException(
-					'Cannot instantiate class which does not extend model class %s for class %s',
-					static::MODEL_CLASS,
-					$class
+					'Model class for repository "%s" is not configured, could not %s entity',
+					get_class($repository),
+					$action
 				);
 			}
 
-			return $this->reflectionClasses[$class];
+			return $this->getReflection($model)->newInstanceWithoutConstructor();
 		}
 	}
 }

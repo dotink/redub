@@ -10,30 +10,24 @@
 		/**
 		 *
 		 */
-		public function executeCount($reply);
+		public function count($handle, $response);
 
 
 		/**
 		 *
 		 */
-		public function executeFailure($response, $message);
+		public function fail($handle, $response, $message);
 
 
 		/**
 		 *
 		 */
-		public function execute($statement);
+		public function execute($handle, $statement);
 
 
 		/**
 		 *
 		 */
-		public function prepare(Database\Query $query);
-
-
-		/**
-		 *
-		 */
-		public function resolve(Query $query, $reply, $count);
+		public function prepare($handle, Database\Query $query);
 	}
 }

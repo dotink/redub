@@ -35,10 +35,7 @@
 
 			$builder($criteria);
 
-			return $this->manager->loadCollection(
-				$this->getEntityName(),
-				$criteria
-			);
+			return $this->manager->loadCollection($this, $criteria);
 		}
 
 
@@ -47,7 +44,7 @@
 		 */
 		public function create(...$params)
 		{
-			return $this->manager->create($this->getEntityName(), $params);
+			return $this->manager->create($this, $params);
 		}
 
 
@@ -101,7 +98,7 @@
 		 */
 		public function find($key, $create_empty = FALSE)
 		{
-			return $this->manager->load($this->getEntityName(), $key, $create_empty);
+			return $this->manager->loadEntity($this, $key, $create_empty);
 		}
 
 
@@ -124,7 +121,7 @@
 		 * @access public
 		 * @return string The entity name (class) which this repository handles
 		 */
-		public function getEntityName()
+		public function getModel()
 		{
 			return static::$entityName ?: $this->failEntityName();
 		}
@@ -140,22 +137,6 @@
 		public function remove(object $entity)
 		{
 			return $this->manager->remove($entity);
-		}
-
-
-		/**
-		 * Fails when no entity name is configured
-		 *
-		 * @access private
-		 * @return void
-		 * @throws Flourish\ProgrammerException when the entity name is not configured
-		 */
-		private function failEntityName()
-		{
-			throw new Flourish\ProgrammerException(
-				'Cannot initialize "%s", entity name is not set',
-				get_called_class()
-			);
 		}
 	}
 }

@@ -31,20 +31,21 @@ uniqueOn   = [
 	; Example of one-to-many
 
 	[Person.fields.emailAddresses]
-	type   = hasMany
 	target = EmailAddress
-	route  = {
-		"id" : "person"
-	}
+	type   = hasMany
+	unique = TRUE
 	order  = {
 		"priority" : "asc"
+	}
+	route  = {
+		"id" : "person"
 	}
 
 	; Example of many-to-one
 
 	[Person.fields.team]
-	type    = hasOne
 	target  = Team
+	type    = hasOne
 	mapping = team
 	default = {
 		"name ==": "Interns"
@@ -58,28 +59,33 @@ uniqueOn   = [
 	mapping = team_rank
 	default = NULL
 
-
 	; Example of one-to-one
 
 	[Person.fields.user]
-	type   = hasOne
 	target = User
+	type   = hasOne
 	unique = TRUE
 	route  = {
 		"id" : "person"
 	}
 
+	[Person.fields.authLevel]
+	type    = string
+	target  = User
+	mapping = authLevel
+
+
 	; Example of many-to-many
 
 	[Person.fields.groups]
-	type    = hasMany
 	target  = Group
+	type    = hasMany
 	default = {
 		"default ==": TRUE
 	}
 	route   = {
 		"user_groups" : {
-			"id"	: "user",
+			"id"    : "user",
 			"group" : "id"
 		}
 	}

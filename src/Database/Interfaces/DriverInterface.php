@@ -8,18 +8,18 @@
 		/**
 		 *
 		 */
+		static public function getPlatform();
+
+
+		/**
+		 *
+		 */
 		public function connect(ConnectionInterface $connection);
 
 
 		/**
 		 *
 		 */
-		public function getPlatform();
-
-
-		/**
-		 *
-		 */
-		public function run(Query $query);
+		public function run($handle, Query $query);
 	}
 }

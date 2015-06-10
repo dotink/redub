@@ -22,7 +22,7 @@
 		/**
 		 *
 		 */
-		protected $driverAlias = NULL;
+		protected $handle = NULL;
 
 
 		/**
@@ -39,28 +39,36 @@
 		/**
 		 *
 		 */
-		public function execute($statement)
+		public function execute($executable, ...$params)
 		{
 			if (!$this->driver) {
-				throw new Exception(
+				throw new Flourish\ConnectivityException(
 					'Unable to execute (%s), no driver configured',
-					$statement
+					$executable
 				);
 			}
 
-			if (!$this->driver->connect($this)) {
-				throw new Exception(
+			if (!$this->getHandle()) {
+				throw new Flourish\ConnectivityException(
 					'Unable to connect to database "%s" on connection "%s"',
 					$this->getConfig('dbname'),
 					$this->alias
 				);
 			}
 
-			if (!($statement instanceof Query)) {
-				$query = $this->driver->getPlatform()->parse(new Query((string) $statement));
+			$result = $this->driver->run($this->handle, !($executable instanceof Query)
+				? new Query((string) $executable, ...$params)
+				: $executable
+			);
+
+			if (!($result instanceof ResultInterface)) {
+				throw new Flourish\ProgrammerException(
+					'Invalid result returned by driver "%s", must implemente ResultInterface',
+					get_class($this->driver)
+				);
 			}
 
-			return $this->driver->run($query);
+			return $result;
 		}
 
 
@@ -99,9 +107,13 @@
 		/**
 		 *
 		 */
-		public function hasDriver()
+		public function getHandle()
 		{
-			return isset($this->driver);
+			if (!$this->handle) {
+				$this->handle = $this->driver->connect($this);
+			}
+
+			return $this->handle;
 		}
 
 

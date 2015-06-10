@@ -1,15 +1,16 @@
-<?php namespace Redub\Database
+<?php namespace Redub\Database\PDO
 {
+	use Redub\Database;
 	use Dotink\Flourish;
 
 	use PDOStatement;
 	use PDO;
 
 	/**
-	 * A PDOResult
+	 * A PDO Result
 	 *
 	 */
-	class PDOResult implements ResultInterface
+	class Result implements Database\ResultInterface
 	{
 		/**
 		 *
@@ -34,8 +35,8 @@
 		 */
 		public function __construct(PDOStatement $result, $count = 0)
 		{
-			$this->result         = $result;
-			$this->count          = $count;
+			$this->result = $result;
+			$this->count  = $count;
 
 			$this->fetchRow();
 		}

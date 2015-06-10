@@ -51,13 +51,13 @@
 		/**
 		 *
 		 */
-		protected $collections = array();
+		protected $conventions = array();
 
 
 		/**
 		 *
 		 */
-		protected $conventions = array();
+		protected $collections = array();
 
 
 		/**
@@ -70,6 +70,12 @@
 		 *
 		 */
 		protected $fields = array();
+
+
+		/**
+		 *
+		 */
+		protected $identities = array();
 
 
 		/**
@@ -173,7 +179,7 @@
 		/**
 		 *
 		 */
-		public function addRepository($class, $collection)
+		public function addCollection($class, $collection)
 		{
 			$this->collections[$class] = $collection;
 		}
@@ -193,6 +199,17 @@
 		public function cache(Cache $cache)
 		{
 			// TODO: Store in Cache
+		}
+
+
+		/**
+		 *
+		 */
+		public function getCollection($class)
+		{
+			return isset($this->collections[$class])
+				? $this->collections[$class]
+				: NULL;
 		}
 
 
@@ -221,9 +238,59 @@
 		/**
 		 *
 		 */
+		public function getIdentity($class)
+		{
+			return isset($this->identities[$class])
+				? $this->identities[$class]
+				: NULL;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getMapping($class, $field = NULL)
+		{
+			if (isset($this->mappings[$class])) {
+				if ($field) {
+					return isset($this->mappings[$class][$field])
+						? $this->mappings[$class][$field]
+						: NULL;
+				}
+
+				return $this->mappings[$class];
+			}
+
+			return array();
+		}
+
+
+		/**
+		 *
+		 */
+		public function getModel($class)
+		{
+			return isset($this->models[$class])
+				? $this->models[$class]
+				: NULL;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getRepository($class)
+		{
+			return array_search($class, $this->models);
+		}
+
+
+		/**
+		 *
+		 */
 		public function setIdentity($class, $identity)
 		{
-
+			$this->identities[$class] = $identity;
 		}
 
 
@@ -276,11 +343,11 @@
 		protected function addConfig($config)
 		{
 			foreach ($config as $class => $class_config) {
-				if (isset($class_config['model']) || isset($class_config['convention'])) {
-					$this->addRepositoryConfig($class, $class_config);
-
-				} elseif (isset($class_config['identity']) || isset($class_config['convention'])){
+				if (isset($class_config['identity'])) {
 					$this->addModelConfig($class, $class_config);
+
+				} elseif (isset($class_config['convention']) || isset($class_config['model'])){
+					$this->addRepositoryConfig($class, $class_config);
 
 				} else {
 					throw new Flourish\ProgrammerException(
@@ -352,8 +419,8 @@
 			$config = $this->merge(static::$defaultRepositoryConfig, $config);
 
 			$this->addModel($class, $config['model']);
-			$this->addRepository($class, $config['collection']);
 			$this->setOrdering($class, $config['ordering']);
+			$this->addCollection($class, $config['collection']);
 		}
 
 

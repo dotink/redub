@@ -3,7 +3,7 @@
 	/**
 	 *
 	 */
-	class Mysql extends Platform
+	class Mysql extends AbstractPlatform
 	{
 
 	}

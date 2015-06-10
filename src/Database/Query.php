@@ -1,5 +1,8 @@
 <?php namespace Redub\Database
 {
+	/**
+	 *
+	 */
 	class Query
 	{
 		/**
@@ -11,31 +14,25 @@
 		/**
 		 *
 		 */
-		protected $driver = NULL;
+		protected $actionArgs = array();
 
 
 		/**
 		 *
 		 */
-		protected $from = NULL;
+		protected $criteria = array();
 
 
 		/**
 		 *
 		 */
-		protected $fromAliases = array();
+		protected $criteriaJoins = array();
 
 
 		/**
 		 *
 		 */
-		protected $fromIdentifiers = NULL;
-
-
-		/**
-		 *
-		 */
-		protected $join = NULL;
+		protected $statement = NULL;
 
 
 		/**
@@ -47,51 +44,43 @@
 		/**
 		 *
 		 */
+		protected $links = array();
+
+
+		/**
+		 *
+		 */
 		protected $offset = NULL;
 
 
 		/**
 		 *
 		 */
-		protected $order = NULL;
+		protected $params = array();
 
 
 		/**
 		 *
 		 */
-		protected $select = NULL;
+		protected $prepared = FALSE;
 
 
 		/**
 		 *
 		 */
-		protected $selectAliases = array();
-
-
-		/**
-		 *
-		 */
-		protected $selectIdentifiers = array();
-
-
-		/**
-		 *
-		 */
-		protected $tokens = array();
-
-
-		/**
-		 *
-		 */
-		protected $where = NULL;
-
-
-		/**
-		 *
-		 */
-		public function __construct($statement = NULL)
+		public function __construct($statement = NULL, array $params = array())
 		{
 			$this->statement = $statement;
+			$this->params    = $params;
+		}
+
+
+		/**
+		 *
+		 */
+		public function __clone()
+		{
+			$this->statement = NULL;
 		}
 
 
@@ -107,55 +96,27 @@
 		/**
 		 *
 		 */
-		public function addSelect($identifier, $alias = NULL)
+		public function andWhere($condition, $value)
 		{
-			$this->selectAliases[]     = $alias;
-			$this->selectIdentifiers[] = $item;
+			$this->reset();
+
+			$this->criteria[] = 'AND';
+			$this->criteria[] = $this->makeJoinCriteria($condition, $value);
+
+			return $this;
 		}
 
 
 		/**
 		 *
 		 */
-		public function checkAction($action)
+		public function at($offset)
 		{
-			return $this->action == trim(strtoupper($action));
-		}
+			$this->reset();
 
+			$this->offset = $offset;
 
-		/**
-		 *
-		 */
-		public function checkLimit()
-		{
-			return $this->limit !== NULL;
-		}
-
-
-		/**
-		 *
-		 */
-		public function checkOffset()
-		{
-			return $this->offset !== NULL;
-		}
-
-
-		/**
-		 *
-		 */
-		public function getLimit()
-		{
-			return $this->limit;
-		}
-
-
-		/**
-		 *
-		 */
-		public function getOffset()
-		{
-			return $this->offset;
+			return $this;
 		}
 
 
@@ -171,20 +132,101 @@
 		/**
 		 *
 		 */
-		public function setAction($action)
+		public function getAction()
 		{
-			$this->action = strtoupper($action);
+			return $this->action;
 		}
 
 
 		/**
 		 *
 		 */
-		public function setFrom($from)
+		public function getActionArgs()
 		{
-			$this->resetFrom();
+			return $this->actionArgs;
+		}
 
-			$this->from = $from;
+
+		/**
+		 *
+		 */
+		public function getCriteria()
+		{
+			return $this->criteria;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getCriteriaJoins()
+		{
+			return $this->criteriaJoins;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getLimit()
+		{
+			return $this->limit;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getLinks()
+		{
+			return $this->links;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getParams()
+		{
+			return $this->params;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getOffset()
+		{
+			return $this->offset;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getCollections()
+		{
+			return $this->collections;
+		}
+
+
+		/**
+		 *
+		 */
+		public function isPrepared()
+		{
+			return $this->prepared;
+		}
+
+
+		/**
+		 *
+		 */
+		public function link($repository, array $route)
+		{
+			$this->reset();
+
+			$this->links[$repository] = $route;
 
 			return $this;
 		}
@@ -193,11 +235,11 @@
 		/**
 		 *
 		 */
-		public function setJoin($join)
+		public function limit($count)
 		{
-			$this->resetJoin();
+			$this->reset();
 
-			$this->join = $join;
+			$this->limit = $count;
 
 			return $this;
 		}
@@ -206,9 +248,14 @@
 		/**
 		 *
 		 */
-		public function setLimit($limit)
+		public function on($collections, array $links = array())
 		{
-			$this->limit = $limit;
+			$this->reset();
+
+			settype($collections, 'array');
+
+			$this->collections = $collections;
+			$this->links       = $links;
 
 			return $this;
 		}
@@ -217,9 +264,12 @@
 		/**
 		 *
 		 */
-		public function setOffset($offset)
+		public function orWhere($condition, $value)
 		{
-			$this->offset = $offset;
+			$this->reset();
+
+			$this->criteria[] = 'OR';
+			$this->criteria[] = $this->makeJoinCriteria($condition, $value);
 
 			return $this;
 		}
@@ -228,11 +278,12 @@
 		/**
 		 *
 		 */
-		public function setOrder($order)
+		public function perform($action, array $args = array())
 		{
-			$this->resetOrder();
+			$this->reset();
 
-			$this->order = $order;
+			$this->action     = $action;
+			$this->actionArgs = $args;
 
 			return $this;
 		}
@@ -241,11 +292,31 @@
 		/**
 		 *
 		 */
-		public function setSelect($select)
+		public function addParam($value, $index = NULL)
 		{
-			$this->resetSelect();
+			if ($index !== NULL) {
+				$this->params[$index] = $value;
+			} else {
+				$this->params[] = $value;
+			}
 
-			$this->select = $select;
+		}
+
+
+		/**
+		 *
+		 */
+		public function setParams(...$params)
+		{
+			$this->params = $params;
+		}
+
+		/**
+		 *
+		 */
+		public function setPrepared($value)
+		{
+			$this->prepared = (bool) $value;
 
 			return $this;
 		}
@@ -254,11 +325,12 @@
 		/**
 		 *
 		 */
-		public function setWhere($where)
+		public function where($condition, $value)
 		{
-			$this->resetWhere();
+			$this->reset();
 
-			$this->where = $where;
+			$this->criteria   = array();
+			$this->criteria[] = $this->makeJoinCriteria($condition, $value);
 
 			return $this;
 		}
@@ -267,10 +339,35 @@
 		/**
 		 *
 		 */
-		protected function resetSelect()
+		protected function makeJoinCriteria($condition, $value)
 		{
-			$this->selectAliases     = array();
-			$this->selectIdentifiers = array();
+			if (is_array($value)) {
+				if (!in_array($condition, ['any', 'all'])) {
+					throw new Flourish\ProgrammerException(
+						'Invalid criteria passed to query, conditon must be "any" or "all"'
+					);
+				}
+
+				$this->criteriaJoins[count($this->criteria)] = $condition == 'all'
+					? 'AND'
+					: 'OR';
+
+				return $value;
+
+			}
+
+			$this->criteriaJoins[count($this->criteria)] = 'AND';
+
+			return [$condition => $value];
+		}
+
+
+		/**
+		 *
+		 */
+		protected function reset()
+		{
+			$this->statement = NULL;
 		}
 	}
 }
