@@ -1,15 +1,10 @@
 <?php namespace Redub\ORM
 {
+	use Redub\Database\Criteria;
 	use Dotink\Flourish;
 
 	abstract class Repository
 	{
-		/**
-		 *
-		 */
-		static protected $entityName = NULL;
-
-
 		/**
 		 *
 		 */
@@ -29,13 +24,13 @@
 		/**
 		 *
 		 */
-		public function build(callable $builder)
+		public function build(callable $builder, $order = array(), $limit = NULL, $page = 1)
 		{
 			$criteria = clone $this->criteria;
 
 			$builder($criteria);
 
-			return $this->manager->loadCollection($this, $criteria);
+			return $this->manager->loadCollection($this, $criteria, $order, $limit, $page);
 		}
 
 
@@ -51,25 +46,19 @@
 		/**
 		 * Fetches a collection of objects based on an aggregate list of aliased builders
 		 *
-		 * @param string|array $build_aliases The build aliases with which to aggregate criteria
-		 * @param integer $limit The limit to place on the number of entities in the collection
-		 * @param array $order The order for the entities in the collection
-		 * @return Collection The collection containing all matching entities
 		 */
-		public function fetch($build_aliases, $order = array(), $limit = NULL, $page = 1)
+		public function fetch($build_methods, $order = array(), $limit = NULL, $page = 1)
 		{
-			settype($build_aliases, 'array');
-
 			$criteria = clone $this->criteria;
 
-			foreach ($build_aliases as $build_alias_name) {
-				$build_method = 'build' . ucfirst($build_alias_name);
-				$builder      = [$this, $build_method];
+			settype($build_methods, 'array');
+
+			foreach ($build_method as $build_method) {
+				$builder = [$this, $build_method];
 
 				if (!is_callable($builder)) {
 					throw new Flourish\ProgrammerException(
-						'Cannot fetch "%s", build method "%s" is not available',
-						$build_alias_name,
+						'Cannot fetch perform fetch, build method "%s" is not available',
 						$build_method
 					);
 				}
@@ -77,14 +66,7 @@
 				$builder($criteria);
 			}
 
-			$criteria->order($order);
-			$criteria->limit($limit);
-			$criteria->page($page);
-
-			return $this->manager->loadCollection(
-				$this->getEntityName(),
-				$criteria
-			);
+			return $this->manager->loadCollection($this, $criteria, $order, $limit, $page);
 		}
 
 
@@ -112,18 +94,6 @@
 		public function insert($entity)
 		{
 			return $this->manager->insert($entity);
-		}
-
-
-		/**
-		 * Gets the entity name for this repository
-		 *
-		 * @access public
-		 * @return string The entity name (class) which this repository handles
-		 */
-		public function getModel()
-		{
-			return static::$entityName ?: $this->failEntityName();
 		}
 
 
