@@ -5,7 +5,7 @@
 	/**
 	 *
 	 */
-	abstract class AbstractConfiguration
+	abstract class AbstractConfiguration implements ConfigurationInterface
 	{
 		/**
 		 *
@@ -13,18 +13,18 @@
 		static protected $defaultFieldConfig = [
 			'type'     => 'string',
 			'default'  => NULL,
-			'mapping'  => NULL,
 			'nullable' => FALSE,
 			'unique'   => FALSE,
+			'mapTo'    => NULL,
 
 			//
 			// These are for related fields
 			//
 
 			'target'   => NULL,
-			'route'    => NULL,
 			'order'    => NULL,
-			'where'    => NULL
+			'where'    => NULL,
+			'route'    => NULL
 		];
 
 		/**
@@ -43,8 +43,8 @@
 		 */
 		static protected $defaultRepositoryConfig = [
 			'convention' => NULL,
-			'collection' => NULL,
-			'ordering'   => array()
+			'ordering'   => array(),
+			'mapTo'      => NULL,
 		];
 
 
@@ -52,12 +52,6 @@
 		 *
 		 */
 		protected $conventions = array();
-
-
-		/**
-		 *
-		 */
-		protected $collections = array();
 
 
 		/**
@@ -76,6 +70,12 @@
 		 *
 		 */
 		protected $identities = array();
+
+
+		/**
+		 *
+		 */
+		protected $map = array();
 
 
 		/**
@@ -100,12 +100,6 @@
 		 *
 		 */
 		protected $uniqueConstraints = array();
-
-
-		/**
-		 *
-		 */
-		abstract protected function readConfiguration();
 
 
 		/**
@@ -176,12 +170,22 @@
 		}
 
 
+
 		/**
 		 *
 		 */
-		public function addCollection($class, $collection)
+		public function addOrdering($class, $ordering)
 		{
-			$this->collections[$class] = $collection;
+			$this->ordering[$class] = $ordering;
+		}
+
+
+		/**
+		 *
+		 */
+		public function addRepositoryMap($class, $source)
+		{
+			$this->map[$class] = $source;
 		}
 
 
@@ -193,25 +197,6 @@
 
 		}
 
-		/**
-		 *
-		 */
-		public function cache(Cache $cache)
-		{
-			// TODO: Store in Cache
-		}
-
-
-		/**
-		 *
-		 */
-		public function getCollection($class)
-		{
-			return isset($this->collections[$class])
-				? $this->collections[$class]
-				: NULL;
-		}
-
 
 		/**
 		 *
@@ -220,17 +205,6 @@
 		{
 			return isset($this->defaults[$class])
 				? $this->defaults[$class]
-				: array();
-		}
-
-
-		/**
-		 *
-		 */
-		public function getFields($class)
-		{
-			return isset($this->fields[$class])
-				? $this->fields[$class]
 				: array();
 		}
 
@@ -279,9 +253,31 @@
 		/**
 		 *
 		 */
+		public function getTyping($class, $field = NULL)
+		{
+			return isset($this->fields[$class])
+				? $this->fields[$class]
+				: array();
+		}
+
+
+		/**
+		 *
+		 */
 		public function getRepository($class)
 		{
 			return array_search($class, $this->models);
+		}
+
+
+		/**
+		 *
+		 */
+		public function getRepositoryMap($class)
+		{
+			return isset($this->map[$class])
+				? $this->map[$class]
+				: NULL;
 		}
 
 
@@ -308,32 +304,9 @@
 		/**
 		 *
 		 */
-		public function setOrdering($class, $ordering)
-		{
-
-		}
-
-
-		/**
-		 *
-		 */
 		public function load(Cache $cache)
 		{
 			// TODO: Load from Cache
-		}
-
-
-		/**
-		 *
-		 * @return integer The new expiration time
-		 */
-		public function read(Manager $manager)
-		{
-			$this->manager = $manager;
-
-			$this->readConfiguration();
-
-			return time() + (60 * 15);
 		}
 
 
@@ -375,8 +348,8 @@
 
 				$this->addDefault($class, $field, new Collection());
 
-			} else {
-				$this->addMapping($class, $field, $config['mapping']);
+			} elseif (!$config['target']) {
+				$this->addMapping($class, $field, $config['mapTo']);
 				$this->addDefault($class, $field, $config['default']);
 
 				if ($config['unique']) {
@@ -419,8 +392,8 @@
 			$config = $this->merge(static::$defaultRepositoryConfig, $config);
 
 			$this->addModel($class, $config['model']);
-			$this->setOrdering($class, $config['ordering']);
-			$this->addCollection($class, $config['collection']);
+			$this->addOrdering($class, $config['ordering']);
+			$this->addRepositoryMap($class, $config['mapTo']);
 		}
 
 

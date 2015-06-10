@@ -18,6 +18,7 @@
 		{
 			$this->manager  = $manager  ?: new Manager();
 			$this->criteria = $criteria ?: new Criteria();
+			$this->class    = get_class($this);
 		}
 
 
@@ -30,7 +31,7 @@
 
 			$builder($criteria);
 
-			return $this->manager->loadCollection($this, $criteria, $order, $limit, $page);
+			return $this->manager->loadCollection($this->class, $criteria, $order, $limit, $page);
 		}
 
 
@@ -39,7 +40,7 @@
 		 */
 		public function create(...$params)
 		{
-			return $this->manager->create($this, $params);
+			return $this->manager->create($this->class, $params);
 		}
 
 
@@ -66,7 +67,7 @@
 				$builder($criteria);
 			}
 
-			return $this->manager->loadCollection($this, $criteria, $order, $limit, $page);
+			return $this->manager->loadCollection($this->class, $criteria, $order, $limit, $page);
 		}
 
 
@@ -80,7 +81,7 @@
 		 */
 		public function find($key, $create_empty = FALSE)
 		{
-			return $this->manager->loadEntity($this, $key, $create_empty);
+			return $this->manager->loadEntity($this->class, $key, $create_empty);
 		}
 
 

@@ -1,44 +1,42 @@
 <?php namespace Redub\ORM\SQL
 {
-	use Redub\Database\Query;
 	use Redub\ORM;
+	use Redub\Database;
 
 	class Mapper implements ORM\MapperInterface
 	{
-
+		/**
+		 *
+		 */
 		protected $columnAliases = array();
 
+
+		/**
+		 *
+		 */
+		protected $data = NULL;
+
+
+		/**
+		 *
+		 */
 		protected $tableAliases = array();
 
 
 		/**
 		 *
 		 */
-		public function setDriver($driver)
-		{
-			$this->driver = $driver;
-		}
+		protected $configuration = NULL;
 
 
 		/**
 		 *
 		 */
-		public function setManager($manager)
+		public function loadEntityDefaults($entity)
 		{
-			$this->manager = $manager;
-		}
+			$model = get_class($entity);
 
-
-		/**
-		 *
-		 */
-		public function loadDefaultValues($entity, $data)
-		{
-			$model    = get_class($entity);
-			$config   = $this->manager->getConfiguration();
-			$defaults = $config->getDefaults($model);
-
-			$data->setValue($entity, $defaults);
+			$this->data->setValue($entity, $this->configuration->getDefaults($model));
 
 			return TRUE;
 		}
@@ -47,50 +45,76 @@
 		/**
 		 *
 		 */
-		public function loadEntityFromKey($entity, $key, $data)
+		public function loadEntityFromKey($connection, $entity, $key)
 		{
-			$model = get_class($entity);
-
-			$this->validateKey($model, $key);
 			$this->begin();
 
-			$query      = new Query();
-			$config     = $this->manager->getConfiguration();
-			$connection = $this->manager->getConnection($model);
+			$model    = get_class($entity);
+			$mapping  = $this->getMapping($model);
+			$table    = $this->getTable($model);
+			$criteria = $this->makeKeyCriteria($model, $key);
 
-			$mapping    = $config->getMapping($model);
-			$identity   = $config->getIdentity($model);
-			$repository = $config->getRepository($model);
-			$collection = $config->getCollection($repository);
+			$this->makeColumnAliases($mapping);
+			$this->makeTableAlias($table);
 
-			$aliases    = $this->makeColumnAliases($mapping);
+			$result = $connection->execute(function($query) use ($criteria) {
+				return $query
+					-> perform('select', $this->columnAliases)
+					-> on(reset($this->tableAliases))
+					-> using($criteria);
+			})->get(0);
 
-			$query
-				-> perform('select', $aliases)
-				-> on([$collection => $this->makeTableAlias($collection)])
-				-> where($identity . ' ==', $key);
+			$this->data->setValue($entity, $this->reduce($mapping, $result));
 
-			$entity_data = $data->getValue($entity);
-			$query_data  = $connection->execute($query)->get(0);
-			$lookup   = array_flip($aliases);
-			$reverse  = array_flip($mapping);
-
-			foreach ($query_data as $alias => $value) {
-				if (isset($reverse[$lookup[$alias]])) {
-					$entity_data[$reverse[$lookup[$alias]]] = $value;
-				}
-			}
-
-			var_dump($entity_data);
+			return TRUE;
 		}
 
 
+		/**
+		 *
+		 */
+		public function setConfiguration($configuration)
+		{
+			$this->configuration = $configuration;
+		}
 
+
+		/**
+		 *
+		 */
+		public function setData($data)
+		{
+			$this->data = $data;
+		}
+
+
+		/**
+		 *
+		 */
 		protected function begin()
 		{
 			$this->tableAliases  = array();
 			$this->columnAliases = array();
 		}
+
+		/**
+		 *
+		 */
+		protected function getTable($model)
+		{
+			return $this->configuration->getRepositoryMap(
+				$this->configuration->getRepository($model)
+			);
+		}
+
+		/**
+		 *
+		 */
+		protected function getMapping($model)
+		{
+			return $this->configuration->getMapping($model);
+		}
+
 
 		/**
 		 *
@@ -113,18 +137,41 @@
 		/**
 		 *
 		 */
-		protected function makeTableAlias($table)
+		protected function makeKeyCriteria($model, $key)
 		{
-			return $this->tableAliases[$table] = 't' . count($this->tableAliases);
+			$criteria = new Database\Criteria();
+
+			$criteria->where('id ==', $key);
+
+			return $criteria;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function validateKey($model, $key)
+		protected function makeTableAlias($table)
 		{
+			return $this->tableAliases[] = [$table => 't' . count($this->tableAliases)];
+		}
 
+
+		/**
+		 *
+		 */
+		protected function reduce($mapping, $values, $lookup = NULL)
+		{
+			$data = array();
+
+			if (!$lookup) {
+				$lookup = $this->columnAliases;
+			}
+
+			foreach (array_keys($mapping) as $field) {
+				$data[$field] = $values[$lookup[$mapping[$field]]];
+			}
+
+			return $data;
 		}
 	}
 }

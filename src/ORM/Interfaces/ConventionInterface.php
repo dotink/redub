@@ -5,8 +5,5 @@
 		static public function convertFieldToMapping();
 
 		static public function getConventionName();
-
-
-
 	}
 }

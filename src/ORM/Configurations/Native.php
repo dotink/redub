@@ -11,24 +11,13 @@
 	{
 		/**
 		 *
+		 * @return integer The new expiration time
 		 */
-		protected $configuration = array();
-
-
-		/**
-		 *
-		 */
-		public function __construct(array $configuration = array())
+		public function read(array $configuration = array())
 		{
-			$this->configuration = $configuration;
-		}
+			$this->addConfiguration($configuration);
 
-		/**
-		 *
-		 */
-		protected function readConfiguration()
-		{
-			$this->addConfiguration($this->configuration);
+			return time() + (60 * 15);
 		}
 	}
 }

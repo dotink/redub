@@ -1,5 +1,7 @@
 <?php namespace Redub\Database
 {
+	use Dotink\Flourish;
+
 	/**
 	 *
 	 */

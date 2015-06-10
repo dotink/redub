@@ -1,6 +1,6 @@
 [People]
 model      = Person
-mapsTo     = people
+mapTo      = people
 convention = Flourish
 ordering   = {
 	"lastName"  : "asc",
@@ -16,17 +16,17 @@ uniqueOn   = [
 	[Person.fields.id]
 	type      = integer
 	generator = native
-	mapsTo    = id
+	mapTo     = id
 
 	[Person.fields.firstName]
 	type     = string
 	nullable = FALSE
-	mapsTo   = first_name
+	mapTo    = first_name
 
 	[Person.fields.lastName]
 	type     = string
 	nullable = TRUE
-	mapsTo   = last_name
+	mapTo    = last_name
 
 	; Example of one-to-many
 
@@ -56,7 +56,7 @@ uniqueOn   = [
 	[Person.fields.teamRank]
 	type    = integer
 	default = NULL
-	mapsTo  = team_rank
+	mapTo   = team_rank
 
 	; Example of one-to-one
 

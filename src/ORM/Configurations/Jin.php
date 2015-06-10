@@ -42,12 +42,10 @@
 
 
 		/**
-		 * Reads the configuration and adds it
 		 *
-		 * @access public
-		 * @return void
+		 * @return integer The new expiration time
 		 */
-		public function readConfiguration()
+		public function read()
 		{
 			if (is_file($this->configPath)) {
 				$this->addConfig($this->readFile($this->configPath));
@@ -63,6 +61,8 @@
 					$this->configPath
 				);
 			}
+
+			return time() + (60 * 15);
 		}
 
 

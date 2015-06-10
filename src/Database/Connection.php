@@ -56,6 +56,10 @@
 				);
 			}
 
+			if (is_callable($executable)) {
+				$executable = $executable(new Query());
+			}
+
 			$result = $this->driver->run($this->handle, !($executable instanceof Query)
 				? new Query((string) $executable, ...$params)
 				: $executable
