@@ -5,7 +5,7 @@
 	/**
 	 *
 	 */
-	abstract class AbstractDriver implements DriverInterface
+	abstract class AbstractDriver implements Database\DriverInterface
 	{
 		const PLATFORM_CLASS = NULL;
 
@@ -34,6 +34,35 @@
 
 			return static::$platform;
 		}
+
+		/**
+		 *
+		 */
+		abstract public function count($handle, $response);
+
+
+		/**
+		 *
+		 */
+		abstract public function fail($handle, $response, $message);
+
+
+		/**
+		 *
+		 */
+		abstract public function execute($handle, $statement);
+
+
+		/**
+		 *
+		 */
+		abstract public function prepare($handle, Database\Query $query);
+
+
+		/**
+		 *
+		 */
+		abstract public function resolve(Database\Query $query, $response, $count);
 
 
 		/**
