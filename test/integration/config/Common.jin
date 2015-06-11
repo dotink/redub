@@ -1,0 +1,6 @@
+[Redub]
+convention = conventions\flourish
+
+	[Redub.connections.default]
+	mapper = mappers\sql
+	driver = drivers\pgsql
