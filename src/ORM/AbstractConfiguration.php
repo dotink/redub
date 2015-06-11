@@ -27,24 +27,32 @@
 			'route'    => NULL
 		];
 
+
 		/**
 		 *
 		 */
-		static protected $defaultModelConfig = [
-			'convention' => NULL,
-			'identity'   => NULL,
+		static protected $defaultRepositoryConfig = [
+			'model'      => NULL,
 			'fields'     => array(),
-			'uniqueOn'   => array()
+			'identity'   => NULL,
+			'uniqueOn'   => array(),
+			'ordering'   => array(),
+			'mapTo'      => NULL,
+			'convention' => NULL
 		];
 
 
 		/**
 		 *
 		 */
-		static protected $defaultRepositoryConfig = [
-			'convention' => NULL,
-			'ordering'   => array(),
-			'mapTo'      => NULL,
+		public $bindings = array();
+
+
+		/**
+		 *
+		 */
+		public $config = [
+			'connections' => array()
 		];
 
 
@@ -157,7 +165,9 @@
 		 */
 		public function addModel($class, $model)
 		{
-			$this->models[$class] = $model;
+			$this->models[$class] = !$model
+				? $class . 'Model'
+				: $model;
 		}
 
 
@@ -197,6 +207,36 @@
 
 		}
 
+
+		/**
+		 *
+		 */
+		public function bind($alias, $object)
+		{
+			$this->bindings[$alias] = $object;
+		}
+
+
+		/**
+		 *
+		 */
+		public function find($key)
+		{
+			return isset($this->config[$key])
+				? $this->config[$key]
+				: NULL;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getBinding($alias)
+		{
+			return isset($this->bindings[$alias])
+				? $this->bindings[$alias]
+				: NULL;
+		}
 
 		/**
 		 *
@@ -315,18 +355,12 @@
 		 */
 		protected function addConfig($config)
 		{
-			foreach ($config as $class => $class_config) {
-				if (isset($class_config['identity'])) {
-					$this->addModelConfig($class, $class_config);
-
-				} elseif (isset($class_config['convention']) || isset($class_config['model'])){
-					$this->addRepositoryConfig($class, $class_config);
+			foreach ($config as $class => $config) {
+				if (strtolower($class) == 'redub') {
+					$this->config = $config;
 
 				} else {
-					throw new Flourish\ProgrammerException(
-						'Invalid class configuration for class %s, must provide model or identity',
-						$class
-					);
+					$this->addRepositoryConfig($class, $config);
 				}
 			}
 		}
@@ -358,12 +392,17 @@
 			}
 		}
 
+
 		/**
 		 *
 		 */
-		protected function addModelConfig($class, $config)
+		protected function addRepositoryConfig($class, $config)
 		{
-			$config = $this->merge(static::$defaultModelConfig, $config);
+			$config = $this->merge(static::$defaultRepositoryConfig, $config);
+
+			$this->addModel($class, $config['model']);
+			$this->addOrdering($class, $config['ordering']);
+			$this->addRepositoryMap($class, $config['mapTo']);
 
 			foreach ($config['fields'] as $field => $field_config) {
 				$this->addFieldConfig($class, $field, $field_config);
@@ -381,19 +420,6 @@
 
 				$this->addUniqueOn($class, $constraint);
 			}
-		}
-
-
-		/**
-		 *
-		 */
-		protected function addRepositoryConfig($class, $config)
-		{
-			$config = $this->merge(static::$defaultRepositoryConfig, $config);
-
-			$this->addModel($class, $config['model']);
-			$this->addOrdering($class, $config['ordering']);
-			$this->addRepositoryMap($class, $config['mapTo']);
 		}
 
 

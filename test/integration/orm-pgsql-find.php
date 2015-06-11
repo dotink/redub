@@ -15,13 +15,11 @@
 	$mapper   = new ORM\SQL\Mapper();
 	$manager  = new ORM\Manager($config);
 
-	$manager->bind('pdo\pgsql', $driver);
-	$manager->bind('sql', $mapper);
+	$config->bind('drivers\pgsql', $driver);
+	$config->bind('mappers\sql',   $mapper);
 
 	$manager->connect($connection = new Redub\Database\Connection('default', [
-		'mapper'  => 'sql',
-		'driver'  => 'pdo\pgsql',
-		'dbname'  => 'redub_test'
+		'dbname' => 'redub_test'
 	]));
 
 

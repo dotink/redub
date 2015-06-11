@@ -1,36 +1,33 @@
 [People]
-model      = Person
-mapTo      = people
-convention = Flourish
-ordering   = {
+identity = id
+model    = Person
+mapTo    = people
+uniqueOn = [
+	["team", "teamRank"]
+]
+ordering = {
 	"lastName"  : "asc",
 	"firstName" : "asc"
 }
 
-[Person]
-identity   = id
-uniqueOn   = [
-	["team", "teamRank"]
-]
-
-	[Person.fields.id]
+	[People.fields.id]
 	type      = integer
 	generator = native
 	mapTo     = id
 
-	[Person.fields.firstName]
+	[People.fields.firstName]
 	type     = string
 	nullable = FALSE
 	mapTo    = first_name
 
-	[Person.fields.lastName]
+	[People.fields.lastName]
 	type     = string
 	nullable = TRUE
 	mapTo    = last_name
 
 	; Example of one-to-many
 
-	[Person.fields.emailAddresses]
+	[People.fields.emailAddresses]
 	type   = hasMany
 	target = EmailAddress
 	unique = TRUE
@@ -43,7 +40,7 @@ uniqueOn   = [
 
 	; Example of many-to-one
 
-	[Person.fields.team]
+	[People.fields.team]
 	type    = hasOne
 	target  = Team
 	default = {
@@ -53,14 +50,14 @@ uniqueOn   = [
 		"team" : "id"
 	}
 
-	[Person.fields.teamRank]
+	[People.fields.teamRank]
 	type    = integer
 	default = NULL
 	mapTo   = team_rank
 
 	; Example of one-to-one
 
-	[Person.fields.user]
+	[People.fields.user]
 	type   = hasOne
 	target = User
 	unique = TRUE
@@ -68,13 +65,13 @@ uniqueOn   = [
 		"id" : "person"
 	}
 
-	[Person.fields.authLevel]
+	[People.fields.authLevel]
 	type    = string
 	target  = user.authLevel
 
 	; Example of many-to-many
 
-	[Person.fields.groups]
+	[People.fields.groups]
 	type    = hasMany
 	target  = Group
 	default = {

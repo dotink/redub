@@ -89,46 +89,60 @@
 		/**
 		 *
 		 */
-		public function bind($alias, $object)
+		public function connect(ConnectionInterface $connection)
 		{
-			if ($object instanceof MapperInterface) {
-				$object->setConfiguration($this->getConfiguration());
-				$object->setData(static::$reflector);
-			}
+			$alias       = $connection->getAlias();
+			$config      = $this->getConfiguration();
+			$connections = $config->find('connections');
 
-			$this->bindings[$alias] = $object;
-		}
-
-
-		/**
-		 *
-		 */
-		public function connect(ConnectionInterface $connection, $ns = '')
-		{
-			$ns     = trim($ns, '\\');
-			$alias  = $connection->getAlias();
-
-			if (isset($this->connections[$ns])) {
+			if (!isset($connections[$alias])) {
 				throw new Flourish\ProgrammerException(
-					'Connection "%s" has already been configured for namespace "%s"',
-					$this->connections[$ns]->getAlias(),
-					$ns
+					'Cannot connect "%s", configuration does not exist',
+					$alias
 				);
 			}
 
-			if (array_search($connection, $this->connections) === FALSE) {
-				$driver = $connection->getConfig('driver');
-				$mapper = $connection->getConfig('mapper');
-
-				//
-				// TODO: make sure the driver and mapper are actually bound
-				//
-
-				$this->mappers[$alias]  = $this->bindings[$mapper];
-				$this->connections[$ns] = $connection;
-
-				$connection->setDriver($this->bindings[$driver]);
+			if (!isset($connections[$alias]['driver'])) {
+				throw new Flourish\ProgrammerException(
+					'Cannot connect "%s", no driver specified',
+					$alias
+				);
 			}
+
+			if (isset($connections[$alias]['mapper'])) {
+				$mapper = $config->getBinding($connections[$alias]['mapper']);
+
+				if (!$mapper) {
+					throw new Flourish\ProgrammerException(
+						'Invalid mapper "%s" bound to configuration "%s"',
+						$config['mapper'],
+						$alias
+					);
+				}
+
+				if (!in_array($mapper, $this->mappers)) {
+					$mapper->setData(static::$reflector);
+					$mapper->setConfiguration($config);
+				}
+
+				$this->mappers[$alias] = $mapper;
+			}
+
+			$driver = $config->getBinding($connections[$alias]['driver']);
+
+			if (!$driver) {
+				throw new Flourish\ProgrammerException(
+					'Invalid driver "%s" bound to configuration "%s"',
+					$connections[$alias]['driver'],
+					$alias
+				);
+			}
+
+			$connection->setDriver($driver);
+			$this->register($connection, isset($connections[$alias]['namespaces'])
+				? $connections[$alias]['namespaces']
+				: ['\\']
+			);
 		}
 
 
@@ -138,7 +152,7 @@
 		public function create($repository, $params = array())
 		{
 			$entity = $this->initializeEntity('create', $repository);
-			$mapper = $this->getMapper($entity);
+			$mapper = $this->getMapper($repository);
 
 			$mapper->loadEntityDefaults($entity);
 
@@ -161,7 +175,7 @@
 				// - if expiration time is in future call $this->configuration->load($cache);
 
 			} elseif ($this->configurationExpiration <= time()) {
-				$this->configurationExpiration = $this->configuration->read($this);
+				$this->configurationExpiration = $this->configuration->read();
 
 			}
 
@@ -193,10 +207,9 @@
 		 * @return Mapper The mapper for the class
 		 *
 		 */
-		public function getMapper($entity)
+		public function getMapper($repository)
 		{
-			$model      = get_class($entity);
-			$connection = $this->getConnection($model);
+			$connection = $this->getConnection($repository);
 
 			//
 			// TODO: see if mapper actually exists for that alias
@@ -217,10 +230,6 @@
 		{
 			$model = $this->getConfiguration()->getModel($repository);
 
-			if (!$model) {
-				return NULL;
-			}
-
 			if (class_exists($model)) {
 				return $model;
 			}
@@ -239,7 +248,7 @@
 		{
 			$connection = $this->getConnection($repository);
 			$entity     = $this->initializeEntity('load', $repository);
-			$mapper     = $this->getMapper($entity);
+			$mapper     = $this->getMapper($repository);
 
 			$mapper->loadEntityDefaults($entity);
 
@@ -252,6 +261,28 @@
 
 
 		/**
+		 *
+		 */
+		public function register(ConnectionInterface $connection, $namespaces)
+		{
+			settype($namespaces, 'array');
+
+			foreach ($namespaces as $namespace) {
+				$canonical_namespace = trim($namespace, '\\');
+
+				if (isset($this->connections[$canonical_namespace])) {
+					throw new Flourish\ProgrammerException(
+						'Cannot register connection "%s" for namespace "%s", already registered',
+						$namespace
+					);
+				}
+
+				$this->connections[$canonical_namespace] = $connection;
+			}
+		}
+
+
+		/**
 		 * Initializes an entity (but does not construct) by using a model's reflection class
 		 *
 		 * @access protected
@@ -260,17 +291,10 @@
 		 */
 		protected function initializeEntity($action, $repository)
 		{
-			$model = $this->getRepositoryModel($repository);
+			$model    = $this->getRepositoryModel($repository);
+			$instance = $this->getReflection($model)->newInstanceWithoutConstructor();
 
-			if (!$model) {
-				throw new Flourish\ProgrammerException(
-					'Model class for repository "%s" is not configured, could not %s entity',
-					get_class($repository),
-					$action
-				);
-			}
-
-			return $this->getReflection($model)->newInstanceWithoutConstructor();
+			return $instance;
 		}
 	}
 }

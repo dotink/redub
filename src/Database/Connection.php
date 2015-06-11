@@ -60,9 +60,11 @@
 				$executable = $executable(new Query());
 			}
 
-			$result = $this->driver->run($this->handle, !($executable instanceof Query)
-				? new Query((string) $executable, ...$params)
-				: $executable
+			$result = $this->driver->run(
+				$this->handle,
+				!($executable instanceof Query)
+					? new Query((string) $executable, ...$params)
+					: $executable
 			);
 
 			if (!($result instanceof ResultInterface)) {
@@ -126,6 +128,7 @@
 		 */
 		public function setDriver(DriverInterface $driver)
 		{
+			$this->handle = NULL;
 			$this->driver = $driver;
 		}
 	}

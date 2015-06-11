@@ -34,9 +34,11 @@
 		 */
 		public function loadEntityDefaults($entity)
 		{
-			$model = get_class($entity);
+			$model      = get_class($entity);
+			$repository = $this->configuration->getRepository($model);
+			$defaults   = $this->configuration->getDefaults($repository);
 
-			$this->data->setValue($entity, $this->configuration->getDefaults($model));
+			$this->data->setValue($entity, $defaults);
 
 			return TRUE;
 		}
@@ -49,10 +51,11 @@
 		{
 			$this->begin();
 
-			$model    = get_class($entity);
-			$mapping  = $this->getMapping($model);
-			$table    = $this->getTable($model);
-			$criteria = $this->makeKeyCriteria($model, $key);
+			$model      = get_class($entity);
+			$repository = $this->configuration->getRepository($model);
+			$criteria   = $this->makeKeyCriteria($repository, $key);
+			$mapping    = $this->getMapping($repository);
+			$table      = $this->getTable($repository);
 
 			$this->makeColumnAliases($mapping);
 			$this->makeTableAlias($table);
@@ -100,19 +103,17 @@
 		/**
 		 *
 		 */
-		protected function getTable($model)
+		protected function getTable($repository)
 		{
-			return $this->configuration->getRepositoryMap(
-				$this->configuration->getRepository($model)
-			);
+			return $this->configuration->getRepositoryMap($repository);
 		}
 
 		/**
 		 *
 		 */
-		protected function getMapping($model)
+		protected function getMapping($repository)
 		{
-			return $this->configuration->getMapping($model);
+			return $this->configuration->getMapping($repository);
 		}
 
 
@@ -137,10 +138,13 @@
 		/**
 		 *
 		 */
-		protected function makeKeyCriteria($model, $key)
+		protected function makeKeyCriteria($repository, $key)
 		{
 			$criteria = new Database\Criteria();
 
+			//
+			// TODO: get real criteria
+			//
 			$criteria->where('id ==', $key);
 
 			return $criteria;
