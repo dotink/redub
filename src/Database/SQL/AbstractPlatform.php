@@ -260,26 +260,26 @@
 		 */
 		protected function composeSelectFrom($query, $placeholder)
 		{
-			$collection = $query->getCollection();
+			$repository = $query->getRepository();
 
-			if (!is_array($collection)) {
+			if (!is_array($repository)) {
 				$table = $this->escapeIdentifier(
-					$collection,
+					$repository,
 					$query->isPrepared()
 				);
 
-			} elseif (!is_numeric(key($collection))) {
+			} elseif (!is_numeric(key($repository))) {
 				$table = $this->makeTableWithAlias(
 					$query,
 					$placeholder,
-					key($collection),
-					current($collection)
+					key($repository),
+					current($repository)
 				);
 
 			} else {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose tables in FROM clause with malformed collection value',
-					$collection
+					'Cannot compose tables in FROM clause with malformed repository value',
+					$repository
 				);
 			}
 
