@@ -167,16 +167,34 @@
 
 			foreach ($constraints as $constraint) {
 				if (!count(array_diff($constraint, array_keys($key)))) {
-					$conditions = array_combine(
-						array_map(function($key) { return $key . ' =='; }, array_keys($key)),
-						array_values($key)
-					);
-
-					return $criteria->where($conditions);
+					return $criteria->where($this->makeMappedConditions($repository, $key));
 				}
 			}
 
 			return NULL;
+		}
+
+
+		/**
+		 *
+		 */
+		protected function makeMappedConditions($repository, $key)
+		{
+			$mapping    = $this->configuration->getMapping($repository);
+			$conditions = array();
+
+			foreach ($key as $field => $value) {
+				if (!isset($mapping[$field])) {
+					throw new Flourish\ProgrammerException(
+						'Unknown field "%s" used in criteria or query conditions',
+						$field
+					);
+				}
+
+				$conditions[$mapping[$field] . ' =='] = $value;
+			}
+
+			return $conditions;
 		}
 
 

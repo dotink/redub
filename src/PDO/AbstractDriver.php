@@ -102,7 +102,7 @@
 			$statement = $handle->prepare($statement);
 
 			foreach ($query->getParams() as $index => $value) {
-				$statement->bindParam($index, $value);
+				$statement->bindValue($index, $value);
 			}
 
 			return $statement;

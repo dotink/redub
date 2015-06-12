@@ -26,11 +26,16 @@ ordering = {
 	nullable = TRUE
 	mapTo    = last_name
 
+	[People.fields.email]
+	type     = string
+	nullable = FALSE
+	mapTo    = email
+
 	; Example of one-to-many
 
-	[People.fields.emailAddresses]
+	[People.fields.phoneNumbers]
 	type   = hasMany
-	target = EmailAddress
+	target = PhoneNumber
 	unique = TRUE
 	order  = {
 		"priority" : "asc"

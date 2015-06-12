@@ -356,9 +356,7 @@
 		 */
 		protected function makeCondition($query, $placeholder, $clause, $value)
 		{
-			$parts = explode(' ', $clause);
-
-			if (!count($parts) == 2) {
+			if (!preg_match('#^([a-zA-Z_]+)\s+(.{2})$#', $clause, $matches)) {
 				throw new Flourish\ProgrammerException(
 					'Cannot compose query with malforum clause "%s", no operator found',
 					$clause
@@ -366,8 +364,8 @@
 			}
 
 			return sprintf('%s %s',
-				$this->escapeIdentifier($parts[0], $query->isPrepared()),
-				$this->makeOperator($query, $placeholder, $parts[1], $value)
+				$this->escapeIdentifier($matches[1], $query->isPrepared()),
+				$this->makeOperator($query, $placeholder, $matches[2], $value)
 			);
 		}
 

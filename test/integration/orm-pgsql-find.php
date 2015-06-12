@@ -36,7 +36,7 @@
 	});
 
 	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Allison', NULL, NULL)");
-	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Matthew','Sahagian', 'matt@imarc.net')");
+	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Matthew', 'Sahagian', 'matt@imarc.net')");
 	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Jeff', 'Turcotte', NULL)");
 
 	$people = new People($manager);
@@ -53,7 +53,7 @@
 	echo $person->getFirstName()       . PHP_EOL;
 	echo $person->getLastName()        . PHP_EOL;
 
-	$person = $people->find(['email' => 'matt@imarc.net']);
+	$person = $people->find(['email' => 'matt@imarc.net', 'firstName' => 'Matthew']);
 
 	echo $person->getFirstName()       . PHP_EOL;
 	echo $person->getLastName()        . PHP_EOL;
