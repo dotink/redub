@@ -64,6 +64,12 @@
 		/**
 		 *
 		 */
+		protected $repository = NULL;
+
+
+		/**
+		 *
+		 */
 		protected $statement = NULL;
 
 
@@ -166,9 +172,9 @@
 		/**
 		 *
 		 */
-		public function getCollection()
+		public function getRepository()
 		{
-			return $this->collection;
+			return $this->repository;
 		}
 
 
@@ -268,11 +274,11 @@
 		/**
 		 *
 		 */
-		public function on($collection, array $links = array())
+		public function on($repository, array $links = array())
 		{
 			$this->reset();
 
-			$this->collection = $collection;
+			$this->repository = $repository;
 			$this->links      = $links;
 
 			return $this;
@@ -355,6 +361,16 @@
 		/**
 		 *
 		 */
+		public function setRepository($repository)
+		{
+			$this->repository = $repository;
+
+			return $this;
+		}
+
+		/**
+		 *
+		 */
 		public function using(Criteria $criteria)
 		{
 			$this->reset();
@@ -411,6 +427,9 @@
 		protected function glue($condition, $value)
 		{
 			if (is_array($value)) {
+				$values = $value;
+				$value  = array();
+
 				if (!in_array($condition, ['any', 'all'])) {
 					throw new Flourish\ProgrammerException(
 						'Invalid criteria passed to query, conditon must be "any" or "all"'
@@ -421,14 +440,18 @@
 					? 'AND'
 					: 'OR';
 
-				return $value;
+				foreach ($values as $condition => $value) {
+					$value[] = $this->split($condition, $value);
+				}
 
+				return $value;
 			}
 
 			$this->glue[count($this->criteria)] = 'AND';
 
-			return [$condition => $value];
+			return $this->split($condition, $value);
 		}
+
 
 
 		/**

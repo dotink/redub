@@ -172,8 +172,8 @@
 					continue;
 				}
 
-				foreach ($criteria as $clause => $value) {
-					$parts[] = $this->makeCondition($query, $placeholder, $clause, $value);
+				foreach ($criteria as $condition) {
+					$parts[] = $this->makeCondition($query, $placeholder, $condition);
 				}
 
 				$conditions .= sprintf('(%s)',
@@ -354,18 +354,21 @@
 		/**
 		 *
 		 */
-		protected function makeCondition($query, $placeholder, $clause, $value)
+		protected function makeCondition($query, $placeholder, $condition)
 		{
-			if (!preg_match('#^([a-zA-Z_]+)\s+(.{2})$#', $clause, $matches)) {
+			list($condition, $operator, $value) = $condition;
+
+			if (!isset(self::$supportedOperators[$operator])) {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose query with malforum clause "%s", no operator found',
-					$clause
+					'Cannot compose query with operator "%s", unsupported by this platform',
+					$operator
 				);
 			}
 
-			return sprintf('%s %s',
-				$this->escapeIdentifier($matches[1], $query->isPrepared()),
-				$this->makeOperator($query, $placeholder, $matches[2], $value)
+			return sprintf(
+				'%s %s',
+				$this->escapeIdentifier($condition, $query->isPrepared()),
+				$this->makeOperator($query, $placeholder, $operator, $value)
 			);
 		}
 

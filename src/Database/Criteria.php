@@ -23,12 +23,12 @@
 		public function where($conditions)
 		{
 			if (is_string($conditions) && func_num_args() == 2) {
-				$this->criteria = array_merge($this->criteria, [
-					func_get_arg(0) => func_get_arg(1)
-				]);
+				$this->criteria[] = $this->split(func_get_arg(0), func_get_arg(1));
 
 			} elseif (is_array($conditions)) {
-				$this->criteria = array_merge($this->criteria, $conditions);
+				foreach ($conditions as $condition => $value) {
+					$this->criteria[] = $this->split($condition, $value);
+				}
 
 			} else {
 				throw new Flourish\ProgrammerException(
@@ -48,6 +48,22 @@
 			$this->arguments = $arguments;
 
 			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		protected function split($condition, $value)
+		{
+			if (!preg_match('#^([a-zA-Z_]+)\s+(.{2})$#', $condition, $matches)) {
+				throw new Flourish\ProgrammerException(
+					'Invalid criteria passed to query, malformed condition "%s"',
+					$condition
+				);
+			}
+
+			return [$matches[1], $matches[2], $value];
 		}
 	}
 }
