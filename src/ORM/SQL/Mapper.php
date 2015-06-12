@@ -2,6 +2,7 @@
 {
 	use Redub\ORM;
 	use Redub\Database;
+	use Dotink\Flourish;
 
 	class Mapper implements ORM\MapperInterface
 	{
@@ -49,13 +50,20 @@
 		 */
 		public function loadEntityFromKey($connection, $entity, $key)
 		{
-			$this->begin();
-
 			$model      = get_class($entity);
 			$repository = $this->configuration->getRepository($model);
+			$identity   = $this->configuration->getIdentity($repository);
 			$criteria   = $this->makeKeyCriteria($repository, $key);
 			$mapping    = $this->getMapping($repository);
 			$table      = $this->getTable($repository);
+
+			if (!$criteria) {
+				return FALSE; // Key did not match a surrogate ID or a unique constraint, error
+			}
+
+			// TODO: Figure out if we're in the identity map
+
+			$this->begin();
 
 			$this->makeColumnAliases($mapping);
 			$this->makeTableAlias($table);
@@ -65,11 +73,17 @@
 					-> perform('select', $this->columnAliases)
 					-> on(reset($this->tableAliases))
 					-> using($criteria);
-			})->get(0);
+			});
 
-			$this->data->setValue($entity, $this->reduce($mapping, $result));
+			if ($result->count() == 1) {
+				$this->data->setValue($entity, $this->reduce($mapping, $result->get(0)));
 
-			return TRUE;
+				return $entity;
+			}
+
+			return $result->count() > 1
+				? FALSE // Return on error, i.e. we somehow got more than one result
+				: NULL; // Return on not found, got 0 results
 		}
 
 
@@ -140,14 +154,29 @@
 		 */
 		protected function makeKeyCriteria($repository, $key)
 		{
-			$criteria = new Database\Criteria();
+			$criteria    = new Database\Criteria();
+			$identity    = $this->configuration->getIdentity($repository);
+			$uniques     = $this->configuration->getUniqueConstraints($repository);
+			$constraints = [$identity] + $uniques;
 
-			//
-			// TODO: get real criteria
-			//
-			$criteria->where('id ==', $key);
+			if (!is_array($key)) {
+				$key = count($identity) == 1
+					? [$identity[0] => $key]
+					: array();
+			}
 
-			return $criteria;
+			foreach ($constraints as $constraint) {
+				if (!count(array_diff($constraint, array_keys($key)))) {
+					$conditions = array_combine(
+						array_map(function($key) { return $key . ' =='; }, array_keys($key)),
+						array_values($key)
+					);
+
+					return $criteria->where($conditions);
+				}
+			}
+
+			return NULL;
 		}
 
 
@@ -165,14 +194,15 @@
 		 */
 		protected function reduce($mapping, $values, $lookup = NULL)
 		{
-			$data = array();
-
 			if (!$lookup) {
 				$lookup = $this->columnAliases;
 			}
 
-			foreach (array_keys($mapping) as $field) {
-				$data[$field] = $values[$lookup[$mapping[$field]]];
+			$data = array();
+			$fill = array_flip($mapping);
+
+			foreach ($lookup as $column => $alias) {
+				$data[$fill[$column]] = $values[$alias];
 			}
 
 			return $data;

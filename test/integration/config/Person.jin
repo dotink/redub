@@ -3,7 +3,8 @@ identity = id
 model    = Person
 mapTo    = people
 uniqueOn = [
-	["team", "teamRank"]
+	["team", "teamRank"],
+	["email"]
 ]
 ordering = {
 	"lastName"  : "asc",

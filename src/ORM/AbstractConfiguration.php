@@ -202,9 +202,9 @@
 		/**
 		 *
 		 */
-		public function addUniqueOn($class, $constraint)
+		public function addUniqueOn($class, array $constraint)
 		{
-
+			$this->uniqueConstraints[$class][] = $constraint;
 		}
 
 
@@ -295,6 +295,12 @@
 		 */
 		public function getTyping($class, $field = NULL)
 		{
+			if ($field) {
+				return isset($this->fields[$class][$field])
+					? $this->fields[$class][$field]
+					: NULL;
+			}
+
 			return isset($this->fields[$class])
 				? $this->fields[$class]
 				: array();
@@ -324,9 +330,22 @@
 		/**
 		 *
 		 */
+		public function getUniqueConstraints($class)
+		{
+			return isset($this->uniqueConstraints[$class])
+				? $this->uniqueConstraints[$class]
+				: array();
+		}
+
+
+		/**
+		 *
+		 */
 		public function setIdentity($class, $identity)
 		{
-			$this->identities[$class] = $identity;
+			$this->identities[$class] = (array) $identity;
+
+			return $this;
 		}
 
 
@@ -338,6 +357,15 @@
 			$this->init('nullables', $class);
 
 			$this->nullables[$class][$field] = $nullable;
+		}
+
+
+		/**
+		 *
+		 */
+		public function setUniqueOn($class, array $constraints = array())
+		{
+			$this->uniqueOn[$class] = $constraints;
 		}
 
 
@@ -409,15 +437,9 @@
 			}
 
 			$this->setIdentity($class, $config['identity']);
+			$this->setUniqueOn($class, array());
 
 			foreach ($config['uniqueOn'] as $unique_on => $constraint) {
-				if (!is_array($constraint)) {
-					throw new Flourish\ProgrammerException(
-						'Invalid model configuration using non-array constraint %s',
-						$constraint
-					);
-				}
-
 				$this->addUniqueOn($class, $constraint);
 			}
 		}

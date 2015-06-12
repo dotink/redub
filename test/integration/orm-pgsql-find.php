@@ -27,16 +27,17 @@
 		id SERIAL PRIMARY KEY,
 		first_name VARCHAR NOT NULL,
 		last_name VARCHAR,
-		team_rank INTEGER
+		team_rank INTEGER,
+		email VARCHAR UNIQUE
 	)");
 
 	register_shutdown_function(function() use ($connection) {
 		$connection->execute("DROP TABLE people");
 	});
 
-	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Allison', NULL)");
-	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Matthew','Sahagian')");
-	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Jeff', 'Turcotte')");
+	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Allison', NULL, NULL)");
+	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Matthew','Sahagian', 'matt@imarc.net')");
+	$connection->execute("INSERT INTO people (first_name, last_name, email) VALUES('Jeff', 'Turcotte', NULL)");
 
 	$people = new People($manager);
 	$person = $people->create();
@@ -48,6 +49,11 @@
 	echo $person->getLastName()        . PHP_EOL;
 
 	$person = $people->find(1);
+
+	echo $person->getFirstName()       . PHP_EOL;
+	echo $person->getLastName()        . PHP_EOL;
+
+	$person = $people->find(['email' => 'matt@imarc.net']);
 
 	echo $person->getFirstName()       . PHP_EOL;
 	echo $person->getLastName()        . PHP_EOL;

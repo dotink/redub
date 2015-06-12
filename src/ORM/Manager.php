@@ -252,11 +252,19 @@
 
 			$mapper->loadEntityDefaults($entity);
 
-			if (!$mapper->loadEntityFromKey($connection, $entity, $key)) {
+			if (!($result = $mapper->loadEntityFromKey($connection, $entity, $key))) {
+				if ($result === FALSE) {
+					throw new Flourish\ProgrammerException(
+						'Invalid key specified, does not constitute a unique constraint'
+					);
+				}
 
+				return $return_empty
+					? $entity
+					: NULL;
 			}
 
-			return $entity;
+			return $result;
 		}
 
 
