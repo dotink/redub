@@ -311,12 +311,12 @@
 		{
 			$parts  = explode('.', $path);
 			$target = array_shift($parts);
-			$src    = $this->map[$target];
+			$source = $this->map[$target];
 
 			if (!isset($this->map[$path])) {
 				foreach ($parts as $relation) {
-					$target  = $this->configuration->getTarget($target, $relation); // 'Users'
 					$route   = $this->configuration->getRoute($target, $relation);  // ['users' => ['id' => 'person']]
+					$target  = $this->configuration->getTarget($target, $relation); // 'Users'
 
 					if (!$target) {
 						throw new Flourish\ProgrammerException(
@@ -329,12 +329,12 @@
 					foreach ($route as $dest_table_name => $link) {
 						$dest = $this->getTableAlias($dest_table_name);   // 'tX' - where X == 1+
 
-						$query->link($table_name, [$alias => [
-							$src  . '.' . key($link), // t0.id
-							$dest . '.' . current($link) // t1.person
-						]]);
+						$query->link($dest_table_name, [$dest,
+							$source . '.' . key($link) . ' =:' => // t0.id
+							$dest   . '.' . current($link)        // t1.person
+						]);
 
-						$src = $dest; // set source to destination and continue
+						$source = $dest; // set source to destination and continue
 					}
 				}
 

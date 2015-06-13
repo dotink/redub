@@ -190,7 +190,36 @@
 		 */
 		protected function composeJoins($query, $placeholder)
 		{
+			$links = $query->getLinks();
+			$joins = '';
+			$alias = '';
 
+			foreach ($query->getLinks() as $join_table => $criteria) {
+				$parts  = array();
+
+				if (is_string($criteria[0])) {
+						$alias = array_shift($criteria);
+				}
+
+				if (!count($criteria)) {
+					throw new Flourish\ProgrammerException(
+						'Criteria must exist in order to perform join on "%s"',
+						$join_table
+					);
+				}
+
+				foreach ($criteria as $condition) {
+					$parts[] = $this->makeCondition($query, $placeholder, $condition);
+				}
+
+				$joins .= sprintf(' JOIN %s %s ON (%s)',
+					$this->escapeIdentifier($join_table, $query->isPrepared()),
+					$this->escapeIdentifier($alias, $query->isPrepared()),
+					implode(' AND ', $parts)
+				);
+			}
+
+			return $joins . ' ';
 		}
 
 

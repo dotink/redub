@@ -1,5 +1,7 @@
 <?php namespace Redub\Database
 {
+	use Dotink\Flourish;
+
 	/**
 	 *
 	 */
@@ -56,7 +58,7 @@
 		 */
 		protected function split($condition, $value)
 		{
-			if (!preg_match('#^([a-zA-Z._]+)\s+(.{2})$#', $condition, $matches)) {
+			if (!preg_match('#^([a-zA-Z0-9._]+)\s+(.{2})$#', $condition, $matches)) {
 				throw new Flourish\ProgrammerException(
 					'Invalid criteria passed to query, malformed condition "%s"',
 					$condition

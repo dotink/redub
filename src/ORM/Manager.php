@@ -236,6 +236,8 @@
 			//
 			// TODO: Attempt to auto scaffold model
 			//
+
+			return $model;
 		}
 
 

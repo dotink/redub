@@ -1,7 +1,7 @@
 [People]
-identity = id
-model    = Person
 mapTo    = people
+model    = Person
+identity = id
 uniqueOn = [
 	["team", "teamRank"],
 	["email"]
@@ -31,6 +31,24 @@ ordering = {
 	nullable = FALSE
 	mapTo    = email
 
+	[People.fields.teamRank]
+	type    = integer
+	default = NULL
+	mapTo   = team_rank
+
+	; Example of many-to-one
+
+	[People.fields.team]
+	type     = hasOne
+	target   = Teams
+	nullable = FALSE
+	default  = {
+		"name ==" : "Interns"
+	}
+	route    = {
+		"teams" : { "team" : "id" }
+	}
+
 	; Example of one-to-many
 
 	[People.fields.phoneNumbers]
@@ -44,23 +62,6 @@ ordering = {
 		"phone_numbers" : { "id" : "person" }
 	}
 
-	; Example of many-to-one
-
-	[People.fields.team]
-	type    = hasOne
-	target  = Teams
-	default = {
-		"name ==" : "Interns"
-	}
-	route   = {
-		"teams" : { "team" : "id" }
-	}
-
-	[People.fields.teamRank]
-	type    = integer
-	default = NULL
-	mapTo   = team_rank
-
 	; Example of one-to-one
 
 	[People.fields.user]
@@ -71,19 +72,15 @@ ordering = {
 		"users" : { "id" : "person" }
 	}
 
-	[People.fields.authLevel]
-	type    = string
-	target  = user.authLevel
-
 	; Example of many-to-many
 
 	[People.fields.groups]
 	type    = hasMany
 	target  = Groups
 	default = {
-		"default ==": TRUE
+		"isDefault ==": TRUE
 	}
 	route   = {
-		"user_groups" : { "id"    : "user" },
-		"groups"      : { "group" : "id"}
+		"people_groups" : { "id"    : "person" },
+		"groups"        : { "group" : "id"}
 	}

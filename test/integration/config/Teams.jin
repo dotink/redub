@@ -1,0 +1,17 @@
+[Teams]
+mapTo    = teams
+model    = Team
+identity = id
+ordering = {
+	"name"  : "asc"
+}
+
+	[Teams.fields.id]
+	type      = integer
+	generator = native
+	mapTo     = id
+
+	[Teams.fields.name]
+	type     = string
+	nullable = FALSE
+	mapTo    = name

@@ -32,13 +32,13 @@
 		 *
 		 */
 		static protected $defaultRepositoryConfig = [
+			'mapTo'      => NULL,
 			'model'      => NULL,
-			'fields'     => array(),
 			'identity'   => NULL,
+			'convention' => NULL,
 			'uniqueOn'   => array(),
 			'ordering'   => array(),
-			'mapTo'      => NULL,
-			'convention' => NULL
+			'fields'     => array()
 		];
 
 
@@ -52,7 +52,8 @@
 		 *
 		 */
 		public $config = [
-			'connections' => array()
+			'autoScaffold' => TRUE,
+			'connections'  => array()
 		];
 
 
@@ -102,6 +103,18 @@
 		 *
 		 */
 		protected $nullables = array();
+
+
+		/**
+		 *
+		 */
+		protected $routes = array();
+
+
+		/**
+		 *
+		 */
+		protected $targets = array();
 
 
 		/**
@@ -171,15 +184,6 @@
 		}
 
 
-		/**
-		 *
-		 */
-		public function addRelatedOrdering($class, $target, $ordering)
-		{
-
-		}
-
-
 
 		/**
 		 *
@@ -187,6 +191,15 @@
 		public function addOrdering($class, $ordering)
 		{
 			$this->ordering[$class] = $ordering;
+		}
+
+
+		/**
+		 *
+		 */
+		public function addRelatedOrdering($class, $field, $ordering)
+		{
+
 		}
 
 
@@ -202,7 +215,28 @@
 		/**
 		 *
 		 */
-		public function addUniqueOn($class, array $constraint)
+		public function addRoute($class, $field, $route)
+		{
+			$this->init('routes', $class, $field);
+
+			$this->routes[$class][$field] = $route;
+		}
+
+
+		/**
+		 *
+		 */
+		public function addTarget($class, $field, $target)
+		{
+			$this->init('targets', $class, $field);
+
+			$this->targets[$class][$field] = $target;
+		}
+
+		/**
+		 *
+		 */
+		public function addUniqueConstraint($class, array $constraint)
 		{
 			$this->uniqueConstraints[$class][] = $constraint;
 		}
@@ -293,6 +327,28 @@
 		/**
 		 *
 		 */
+		public function getRoute($class, $field)
+		{
+			return isset($this->routes[$class][$field])
+				? $this->routes[$class][$field]
+				: NULL;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getTarget($class, $field)
+		{
+			return isset($this->targets[$class][$field])
+				? $this->targets[$class][$field]
+				: NULL;
+		}
+
+
+		/**
+		 *
+		 */
 		public function getTyping($class, $field = NULL)
 		{
 			if ($field) {
@@ -363,9 +419,11 @@
 		/**
 		 *
 		 */
-		public function setUniqueOn($class, array $constraints = array())
+		public function setUniqueConstraints($class, array $constraints = array())
 		{
-			$this->uniqueOn[$class] = $constraints;
+			$this->init('uniqueConstraints', $class);
+
+			$this->uniqueConstraints[$class] = $constraints;
 		}
 
 
@@ -404,18 +462,17 @@
 			$this->addField($class, $field, $config['type']);
 			$this->setNullable($class, $field, $config['nullable']);
 
-			if ($config['type'] == 'hasOne') {
-
-			} elseif ($config['type'] == 'hasMany') {
-
-				$this->addDefault($class, $field, new Collection());
+			if (in_array($config['type'], ['hasOne', 'hasMany'])) {
+				$this->addRoute($class, $field, $config['route']);
+				$this->addTarget($class, $field, $config['target']);
+				$this->addDefault($class, $field, $config['default']);
 
 			} elseif (!$config['target']) {
 				$this->addMapping($class, $field, $config['mapTo']);
 				$this->addDefault($class, $field, $config['default']);
 
 				if ($config['unique']) {
-					$this->addUniqueOn($class, [$config['mapping']]);
+					$this->addUniqueConstraint($class, [$config['mapping']]);
 				}
 			}
 		}
@@ -428,6 +485,7 @@
 		{
 			$config = $this->merge(static::$defaultRepositoryConfig, $config);
 
+
 			$this->addModel($class, $config['model']);
 			$this->addOrdering($class, $config['ordering']);
 			$this->addRepositoryMap($class, $config['mapTo']);
@@ -437,10 +495,9 @@
 			}
 
 			$this->setIdentity($class, $config['identity']);
-			$this->setUniqueOn($class, array());
 
 			foreach ($config['uniqueOn'] as $unique_on => $constraint) {
-				$this->addUniqueOn($class, $constraint);
+				$this->addUniqueConstraint($class, $constraint);
 			}
 		}
 

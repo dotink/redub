@@ -248,11 +248,31 @@
 		/**
 		 *
 		 */
-		public function link($repository, array $route)
+		public function link($repository, array $conditions)
 		{
 			$this->reset();
 
-			$this->links[$repository] = $route;
+			$alias    = FALSE;
+			$criteria = array();
+
+			foreach ($conditions as $condition => $value) {
+				if (is_numeric($condition)) {
+					if ($alias) {
+						throw new Flourish\ProgrammerException(
+							'Invalid link format, "%s" is an alias, but one already exists',
+							$value
+						);
+					}
+
+					$alias = $value;
+				} else {
+					$criteria[] = $this->split($condition, $value);
+				}
+			}
+
+			array_unshift($criteria, $alias);
+
+			$this->links[$repository] = $criteria;
 
 			return $this;
 		}
@@ -279,7 +299,10 @@
 			$this->reset();
 
 			$this->repository = $repository;
-			$this->links      = $links;
+
+			foreach ($links as $repository => $conditions) {
+				$this->link($repository, $conditions);
+			}
 
 			return $this;
 		}
