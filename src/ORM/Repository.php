@@ -40,7 +40,7 @@
 		 */
 		public function create(...$params)
 		{
-			return $this->manager->create($this->class, $params);
+			return $this->manager->makeEntity($this->class, $params);
 		}
 
 

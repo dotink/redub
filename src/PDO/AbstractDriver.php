@@ -21,6 +21,14 @@
 
 
 		/**
+		 *
+		 */
+		static public function getPlaceHolder()
+		{
+			return '?';
+		}
+
+		/**
 		 * Enables the connection if it's not enabled
 		 *
 		 * @access public

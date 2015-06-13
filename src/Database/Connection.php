@@ -32,7 +32,10 @@
 		{
 			$this->alias  = $alias;
 			$this->config = $config;
-			$this->driver = $driver;
+
+			if ($driver) {
+				$this->setDriver($driver);
+			}
 		}
 
 
@@ -57,10 +60,17 @@
 			}
 
 			if (is_callable($executable)) {
-				$executable($query = new Query(), ...$params);
+				$query  = new Query();
+				$return = $executable($query, ...$params);
+
+				if ($return) {
+					$query = $return;
+				}
 
 			} elseif (!($executable instanceof Query)) {
-				$query = new Query((string) $executable, ...$params);
+				$token = sprintf($this->driver->getPlaceholder(), '$1');
+				$query = preg_replace('#\{\{(\d+)\}\}#', $token, (string) $executable);
+				$query = new Query($query, ...$params);
 
 			} else {
 				$query = $executable;
@@ -114,13 +124,36 @@
 		/**
 		 *
 		 */
-		public function getHandle()
+		public function getFields($repository)
 		{
-			if (!$this->handle) {
-				$this->handle = $this->driver->connect($this);
-			}
+			return $this->platform->resolveFields($this, $repository);
+		}
 
-			return $this->handle;
+
+		/**
+		 *
+		 */
+		public function getLinks($repository)
+		{
+			return $this->platform->resolveLinks($connection, $repository);
+		}
+
+
+		/**
+		 *
+		 */
+		public function getRepositories()
+		{
+			return $this->platform->resolveRepositories($this);
+		}
+
+
+		/**
+		 *
+		 */
+		public function getUniqueConstraints($repository)
+		{
+			return $this->platform->resolveUniqueConstraints($connection, $repository);
 		}
 
 
@@ -129,8 +162,23 @@
 		 */
 		public function setDriver(DriverInterface $driver)
 		{
-			$this->handle = NULL;
-			$this->driver = $driver;
+			$this->handle   = NULL;
+			$this->driver   = $driver;
+			$this->platform = $driver->getPlatform();
 		}
+
+
+		/**
+		 *
+		 */
+		protected function getHandle()
+		{
+			if (!$this->handle) {
+				$this->handle = $this->driver->connect($this);
+			}
+
+			return $this->handle;
+		}
+
 	}
 }

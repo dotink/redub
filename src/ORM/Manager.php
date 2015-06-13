@@ -29,7 +29,13 @@
 		/**
 		 *
 		 */
-		protected $bindings = array();
+		protected $builder = NULL;
+
+
+		/**
+		 *
+		 */
+		protected $cache = NULL;
 
 
 		/**
@@ -72,14 +78,14 @@
 		/**
 		 *
 		 */
-		public function __construct(ConfigurationInterface $configuration = NULL, Cache $cache = NULL)
+		public function __construct(ConfigurationInterface $config = NULL, ModelBuilder $builder = NULL)
 		{
 			if (!static::$reflector) {
 				static::$reflector = $this->getReflection(static::MODEL_CLASS)->getProperty('data');
 			}
 
-			$this->configuration = $configuration ?: new Configuration\Native();
-			$this->cache         = $cache;
+			$this->builder       = $builder ?: new ModelBuilder();
+			$this->configuration = $config  ?: new Configuration\Native();
 
 			static::$reflector->setAccessible(TRUE);
 		}
@@ -142,24 +148,6 @@
 				? $connections[$alias]['namespaces']
 				: ['\\']
 			);
-		}
-
-
-		/**
-		 *
-		 */
-		public function create($repository, $params = array())
-		{
-			$entity = $this->initializeEntity($repository);
-			$mapper = $this->getMapper($repository);
-
-			$mapper->loadEntityDefaults($entity);
-
-			if (is_callable([$entity, '__construct'])) {
-				$entity->__construct(...$params);
-			}
-
-			return $entity;
 		}
 
 
@@ -264,6 +252,24 @@
 			}
 
 			return $result;
+		}
+
+
+		/**
+		 *
+		 */
+		public function makeEntity($repository, $params = array())
+		{
+			$entity = $this->initializeEntity($repository);
+			$mapper = $this->getMapper($repository);
+
+			$mapper->loadEntityDefaults($entity);
+
+			if (is_callable([$entity, '__construct'])) {
+				$entity->__construct(...$params);
+			}
+
+			return $entity;
 		}
 
 

@@ -32,6 +32,11 @@
 	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Allison', NULL)");
 	$connection->execute("INSERT INTO people (first_name, last_name) VALUES('Jeff', 'Turcotte')");
 
+	foreach ($connection->getRepositories() as $table) {
+		var_dump($table);
+		var_dump($connection->getFields($table));
+	}
+
 	//
 	// Basic Select
 	//

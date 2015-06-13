@@ -1,5 +1,6 @@
 <?php namespace Redub\ORM
 {
+	use Redub\Database\ConnectionInterface;
 	use Dotink\Flourish;
 
 	/**
@@ -397,6 +398,24 @@
 		/**
 		 *
 		 */
+		public function import(ConnectionInterface $connection)
+		{
+
+		}
+
+
+		/**
+		 *
+		 */
+		public function load(Cache $cache)
+		{
+			// TODO: Load from Cache
+		}
+
+
+		/**
+		 *
+		 */
 		public function setIdentity($class, $identity)
 		{
 			$this->identities[$class] = (array) $identity;
@@ -424,15 +443,6 @@
 			$this->init('uniqueConstraints', $class);
 
 			$this->uniqueConstraints[$class] = $constraints;
-		}
-
-
-		/**
-		 *
-		 */
-		public function load(Cache $cache)
-		{
-			// TODO: Load from Cache
 		}
 
 

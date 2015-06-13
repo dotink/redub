@@ -14,6 +14,12 @@
 		/**
 		 *
 		 */
+		static public function getPlaceHolder();
+
+
+		/**
+		 *
+		 */
 		public function connect(ConnectionInterface $connection);
 
 

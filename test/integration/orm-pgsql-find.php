@@ -88,7 +88,7 @@
 	echo $person->getFirstName()       . PHP_EOL;
 	echo $person->getLastName()        . PHP_EOL;
 
-	$person = $people->find(['email' => 'matt@imarc.net', 'team.name' => 'Interns']);
+	$person = $people->find(['email' => 'matt@imarc.net', 'People.firstName' => 'Matthew']);
 
 	echo $person->getFirstName()       . PHP_EOL;
 	echo $person->getLastName()        . PHP_EOL;

@@ -11,7 +11,7 @@
 		/**
 		 *
 		 */
-		public function execute($executable);
+		public function execute($executable, ...$params);
 
 
 		/**
@@ -24,12 +24,6 @@
 		 *
 		 */
 		public function getConfig($key = NULL, $default = NULL);
-
-
-		/**
-		 *
-		 */
-		public function getHandle();
 
 
 		/**
