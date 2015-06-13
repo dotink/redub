@@ -57,15 +57,16 @@
 			}
 
 			if (is_callable($executable)) {
-				$executable = $executable(new Query());
+				$executable($query = new Query(), ...$params);
+
+			} elseif (!($executable instanceof Query)) {
+				$query = new Query((string) $executable, ...$params);
+
+			} else {
+				$query = $executable;
 			}
 
-			$result = $this->driver->run(
-				$this->handle,
-				!($executable instanceof Query)
-					? new Query((string) $executable, ...$params)
-					: $executable
-			);
+			$result = $this->driver->run($this->handle, $query);
 
 			if (!($result instanceof ResultInterface)) {
 				throw new Flourish\ProgrammerException(

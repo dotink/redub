@@ -342,6 +342,15 @@
 		/**
 		 *
 		 */
+		public function setCriteria(array $criteria = array())
+		{
+			$this->criteria = $criteria;
+		}
+
+
+		/**
+		 *
+		 */
 		public function setParams(...$params)
 		{
 			$this->params = $params;

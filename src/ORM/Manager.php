@@ -2,7 +2,6 @@
 {
 	use Redub\Database\ConnectionInterface;
 	use Redub\Database\DriverInterface;
-
 	use Dotink\Flourish;
 
 	use ReflectionClass as Reflector;
@@ -112,7 +111,7 @@
 			if (isset($connections[$alias]['mapper'])) {
 				$mapper = $config->getBinding($connections[$alias]['mapper']);
 
-				if (!$mapper) {
+				if (!$mapper || !($mapper instanceof MapperInterface)) {
 					throw new Flourish\ProgrammerException(
 						'Invalid mapper "%s" bound to configuration "%s"',
 						$config['mapper'],
@@ -130,7 +129,7 @@
 
 			$driver = $config->getBinding($connections[$alias]['driver']);
 
-			if (!$driver) {
+			if (!$driver || !($driver instanceof DriverInterface)) {
 				throw new Flourish\ProgrammerException(
 					'Invalid driver "%s" bound to configuration "%s"',
 					$connections[$alias]['driver'],
@@ -151,7 +150,7 @@
 		 */
 		public function create($repository, $params = array())
 		{
-			$entity = $this->initializeEntity('create', $repository);
+			$entity = $this->initializeEntity($repository);
 			$mapper = $this->getMapper($repository);
 
 			$mapper->loadEntityDefaults($entity);
@@ -247,10 +246,8 @@
 		public function loadEntity($repository, $key, $return_empty)
 		{
 			$connection = $this->getConnection($repository);
-			$entity     = $this->initializeEntity('load', $repository);
+			$entity     = $this->initializeEntity($repository);
 			$mapper     = $this->getMapper($repository);
-
-			$mapper->loadEntityDefaults($entity);
 
 			if (!($result = $mapper->loadEntityFromKey($connection, $entity, $key))) {
 				if ($result === FALSE) {
@@ -260,7 +257,7 @@
 				}
 
 				return $return_empty
-					? $entity
+					? $this->create($repository)
 					: NULL;
 			}
 
@@ -297,7 +294,7 @@
 		 * @param Reflector $reflection The reflection for the model
 		 * @return Model The entity instance prior to constructor execution
 		 */
-		protected function initializeEntity($action, $repository)
+		protected function initializeEntity($repository)
 		{
 			$model    = $this->getRepositoryModel($repository);
 			$instance = $this->getReflection($model)->newInstanceWithoutConstructor();

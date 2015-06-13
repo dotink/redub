@@ -35,25 +35,25 @@ ordering = {
 
 	[People.fields.phoneNumbers]
 	type   = hasMany
-	target = PhoneNumber
+	target = PhoneNumbers
 	unique = TRUE
 	order  = {
 		"priority" : "asc"
 	}
 	route  = {
-		"id" : "person"
+		"phone_numbers" : { "id" : "person" }
 	}
 
 	; Example of many-to-one
 
 	[People.fields.team]
 	type    = hasOne
-	target  = Team
+	target  = Teams
 	default = {
-		"name ==": "Interns"
+		"name ==" : "Interns"
 	}
 	route   = {
-		"team" : "id"
+		"teams" : { "team" : "id" }
 	}
 
 	[People.fields.teamRank]
@@ -65,10 +65,10 @@ ordering = {
 
 	[People.fields.user]
 	type   = hasOne
-	target = User
+	target = Users
 	unique = TRUE
 	route  = {
-		"id" : "person"
+		"users" : { "id" : "person" }
 	}
 
 	[People.fields.authLevel]
@@ -79,13 +79,11 @@ ordering = {
 
 	[People.fields.groups]
 	type    = hasMany
-	target  = Group
+	target  = Groups
 	default = {
 		"default ==": TRUE
 	}
 	route   = {
-		"user_groups" : {
-			"id"    : "user",
-			"group" : "id"
-		}
+		"user_groups" : { "id"    : "user" },
+		"groups"      : { "group" : "id"}
 	}

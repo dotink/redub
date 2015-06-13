@@ -56,7 +56,7 @@
 		 */
 		protected function split($condition, $value)
 		{
-			if (!preg_match('#^([a-zA-Z_]+)\s+(.{2})$#', $condition, $matches)) {
+			if (!preg_match('#^([a-zA-Z._]+)\s+(.{2})$#', $condition, $matches)) {
 				throw new Flourish\ProgrammerException(
 					'Invalid criteria passed to query, malformed condition "%s"',
 					$condition

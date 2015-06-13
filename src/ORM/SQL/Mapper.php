@@ -3,6 +3,7 @@
 	use Redub\ORM;
 	use Redub\Database;
 	use Dotink\Flourish;
+	use Redub\Database\Query;
 
 	class Mapper implements ORM\MapperInterface
 	{
@@ -53,30 +54,28 @@
 			$model      = get_class($entity);
 			$repository = $this->configuration->getRepository($model);
 			$identity   = $this->configuration->getIdentity($repository);
+			$mapping    = $this->configuration->getMapping($repository);
 			$criteria   = $this->makeKeyCriteria($repository, $key);
-			$mapping    = $this->getMapping($repository);
-			$table      = $this->getTable($repository);
 
 			if (!$criteria) {
 				return FALSE; // Key did not match a surrogate ID or a unique constraint, error
 			}
 
-			// TODO: Figure out if we're in the identity map
-
-			$this->begin();
-
-			$this->makeColumnAliases($mapping);
-			$this->makeTableAlias($table);
-
-			$result = $connection->execute(function($query) use ($criteria) {
-				return $query
-					-> perform('select', $this->columnAliases)
-					-> on(reset($this->tableAliases))
-					-> using($criteria);
-			});
+			$result = $connection->execute(
+				function($query, $repository, $criteria, $mapping) {
+					$this->translate($query
+						-> perform('select', array_keys($mapping))
+						-> on($repository)
+						-> using($criteria)
+					);
+				},
+				$repository,
+				$criteria,
+				$mapping
+			);
 
 			if ($result->count() == 1) {
-				$this->data->setValue($entity, $this->reduce($mapping, $result->get(0)));
+				$this->data->setValue($entity, $this->reduce($result->get(0)));
 
 				return $entity;
 			}
@@ -108,44 +107,74 @@
 		/**
 		 *
 		 */
-		protected function begin()
+		public function translate(Query $query)
 		{
+			$this->map           = array();
 			$this->tableAliases  = array();
 			$this->columnAliases = array();
-		}
+			$repository          = $query->getRepository();
+			$table_name          = $this->configuration->getRepositoryMap($repository);
+			$mapping             = $this->configuration->getMapping($repository);
 
-		/**
-		 *
-		 */
-		protected function getTable($repository)
-		{
-			return $this->configuration->getRepositoryMap($repository);
-		}
+			$query->setRepository([$table_name => $this->getTableAlias($table_name)]);
+			$this->addMapping($repository, $this->getTablealias($table_name));
 
-		/**
-		 *
-		 */
-		protected function getMapping($repository)
-		{
-			return $this->configuration->getMapping($repository);
+			$this->translateArguments($repository, $query);
+			$this->translateCriteria($repository, $query);
+
+			return $query;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function makeColumnAlias($column)
+		protected function addMapping($path, $alias)
 		{
-			return $this->columnAliases[$column] = 'c' . count($this->columnAliases);
+			$this->map[$path] = $alias;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function makeColumnAliases($columns)
+		protected function getColumnAlias($column_name)
 		{
-			return array_combine($columns, array_map([$this, 'makeColumnAlias'], $columns));
+			if (!isset($this->columnAliases[$column_name])) {
+				$this->columnAliases[$column_name] = 'c' . count($this->columnAliases);
+			}
+
+			return $this->columnAliases[$column_name];
+
+		}
+
+
+		/**
+		 *
+		 */
+		protected function getTableAlias($table_name)
+		{
+			if (!isset($this->tableAliases[$table_name])) {
+				$this->tableAliases[$table_name] = 't' . count($this->tableAliases);
+			}
+
+			return $this->tableAliases[$table_name];
+		}
+
+
+		/**
+		 *
+		 */
+		protected function makeKeyConditions($repository, $key)
+		{
+			$mapping    = $this->configuration->getMapping($repository);
+			$conditions = array();
+
+			foreach ($key as $field => $value) {
+				$conditions[$field . ' =='] = $value;
+			}
+
+			return $conditions;
 		}
 
 
@@ -167,7 +196,7 @@
 
 			foreach ($constraints as $constraint) {
 				if (!count(array_diff($constraint, array_keys($key)))) {
-					return $criteria->where($this->makeMappedConditions($repository, $key));
+					return $criteria->where($this->makeKeyConditions($repository, $key));
 				}
 			}
 
@@ -178,52 +207,141 @@
 		/**
 		 *
 		 */
-		protected function makeMappedConditions($repository, $key)
+		protected function reduce($source_data)
 		{
+			$data       = array();
+			$lookup     = array_flip($this->map);
+			$repository = reset($lookup);
 			$mapping    = $this->configuration->getMapping($repository);
-			$conditions = array();
 
-			foreach ($key as $field => $value) {
-				if (!isset($mapping[$field])) {
-					throw new Flourish\ProgrammerException(
-						'Unknown field "%s" used in criteria or query conditions',
-						$field
-					);
+			foreach ($lookup as $alias => $map) {
+				$parts = explode('.', $map);
+				$value = $alias[0] == 'c'
+					? $source_data[$alias]
+					: array();
+
+				foreach (array_reverse($parts) as $part) {
+					$value = [$part => $value];
 				}
 
-				$conditions[$mapping[$field] . ' =='] = $value;
+				$data = array_replace_recursive($data, $value);
 			}
 
-			return $conditions;
+			return $data[$repository];
 		}
 
 
 		/**
 		 *
 		 */
-		protected function makeTableAlias($table)
+		protected function translateArguments($repository, Query $query)
 		{
-			return $this->tableAliases[] = [$table => 't' . count($this->tableAliases)];
+			$arguments = array();
+
+			foreach ($query->getArguments() as $argument) {
+				$parts = explode('.', $argument);
+				$field = array_pop($parts);
+
+				if (!count($parts) || $parts[0] != $repository) {
+					array_unshift($parts, $repository);
+				}
+
+				$path   = implode('.', $parts);
+				$column = $this->translatePath($path, $field, $query);
+
+				if (!$column) {
+					//
+					// blow shit up
+					//
+				}
+
+				$cpath = $path . '.' . $field;
+				$alias = $this->getColumnAlias($cpath);
+
+				$this->addMapping($cpath, $alias);
+
+				$arguments[$this->map[$path] . '.' . $column] = $alias;
+			}
+
+			$query->setArguments($arguments);
 		}
 
 
 		/**
 		 *
 		 */
-		protected function reduce($mapping, $values, $lookup = NULL)
+		protected function translateCriteria($repository, Query $query)
 		{
-			if (!$lookup) {
-				$lookup = $this->columnAliases;
+			$criteria = $query->getCriteria();
+
+			foreach ($criteria as $i => $conditions) {
+				if (!is_array($conditions)) {
+					continue;
+				}
+
+				foreach ($conditions as $j => $condition) {
+					$parts  = explode('.', $condition[0]);
+					$field  = array_pop($parts);
+
+					if (!count($parts) || $parts[0] != $repository) {
+						array_unshift($parts, $repository);
+					}
+
+					$path   = implode('.', $parts);
+					$column = $this->translatePath($path, $field, $query);
+
+					if (!$column) {
+						//
+						// Throw a fit
+						//
+					}
+
+					$criteria[$i][$j][0] = $this->map[$path] . '.' . $column;
+				}
 			}
 
-			$data = array();
-			$fill = array_flip($mapping);
+			$query->setCriteria($criteria);
+		}
 
-			foreach ($lookup as $column => $alias) {
-				$data[$fill[$column]] = $values[$alias];
+
+		/**
+		 *
+		 */
+		protected function translatePath($path, $field, Query $query)
+		{
+			$parts  = explode('.', $path);
+			$target = array_shift($parts);
+			$src    = $this->map[$target];
+
+			if (!isset($this->map[$path])) {
+				foreach ($parts as $relation) {
+					$target  = $this->configuration->getTarget($target, $relation); // 'Users'
+					$route   = $this->configuration->getRoute($target, $relation);  // ['users' => ['id' => 'person']]
+
+					if (!$target) {
+						throw new Flourish\ProgrammerException(
+							'Criteria or arguments contain invalid path to field "%s" (%s)',
+							$field,
+							$path
+						);
+					}
+
+					foreach ($route as $dest_table_name => $link) {
+						$dest = $this->getTableAlias($dest_table_name);   // 'tX' - where X == 1+
+
+						$query->link($table_name, [$alias => [
+							$src  . '.' . key($link), // t0.id
+							$dest . '.' . current($link) // t1.person
+						]]);
+
+						$src = $dest; // set source to destination and continue
+					}
+				}
+
+				$this->addMapping($path, $dest); // Set the path to our final destination
 			}
 
-			return $data;
+			return $this->configuration->getMapping($target, $field);
 		}
 	}
 }
