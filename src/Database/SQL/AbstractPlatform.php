@@ -37,7 +37,8 @@
 			'<-' => '< %s',
 			'>-' => '> %s',
 			'<=' => '<= %s',
-			'>=' => '>= %s'
+			'>=' => '>= %s',
+			'IN' => 'IN(%s)'
 		];
 
 
@@ -140,13 +141,13 @@
 				}
 
 				if (is_int($key)) {
-					$columns[] = $this->escapeIdentifier($value, $query->isPrepared());
+					$columns[] = $this->escapeIdentifier($value);
 
 				} else {
 					$columns[] = sprintf(
 						'%s as %s',
-						$this->escapeIdentifier($key, $query->isPrepared()),
-						$this->escapeIdentifier($value, $query->isPrepared())
+						$this->escapeIdentifier($key),
+						$this->escapeIdentifier($value)
 					);
 				}
 			}
@@ -158,27 +159,53 @@
 		/**
 		 *
 		 */
-		protected function composeCriteria($query, $placeholder)
+		protected function composeCriteria($query, $placeholder, $criteria = NULL)
 		{
-			$criterias  = $query->getCriteria();
 			$conditions = '';
 
-			foreach ($criterias as $index => $criteria) {
-				$parts = [];
+			if (!$criteria) {
+				$criteria = $query->getCriteria();
 
-				if (in_array($criteria, ['OR', 'AND'])) {
-					$conditions .= ' ' . $criteria . ' ';
-
-					continue;
+				if (count($criteria) == 1) {
+					$criteria = reset($criteria);
 				}
+			}
 
-				foreach ($criteria as $condition) {
-					$parts[] = $this->makeCondition($query, $placeholder, $condition);
+			foreach ($criteria as $condition) {
+				if (is_array($condition)) {
+					if (count($condition) == 1) {
+						$condition = $condition[0];
+					}
+
+					if (in_array($condition[1], ['and', 'or'])) {
+						$conditions .= sprintf('(%s)', $this->composeCriteria(
+							$query,
+							$placeholder,
+							$condition
+						));
+
+					} elseif (isset(static::$supportedOperators[$condition[1]])) {
+						$conditions .= $this->makeCondition($query, $placeholder, $condition);
+
+					} else {
+						throw new Flourish\ProgrammerException(
+							'Unsupported operator "%s" used in query',
+							$condition[1]
+						);
+					}
+
+
+				} elseif ($condition == 'and') {
+					$conditions .= ' AND ';
+				} elseif ($condition == 'or') {
+					$conditions .= ' OR ';
+
+				} else {
+					throw new Flourish\ProgrammerException(
+						'Invalid glue operator "%s" in query',
+						$condition
+					);
 				}
-
-				$conditions .= sprintf('(%s)',
-					implode(' ' . $query->getGlue($index) . ' ', $parts)
-				);
 			}
 
 			return $conditions;
@@ -213,8 +240,8 @@
 				}
 
 				$joins .= sprintf(' JOIN %s %s ON (%s)',
-					$this->escapeIdentifier($join_table, $query->isPrepared()),
-					$this->escapeIdentifier($alias, $query->isPrepared()),
+					$this->escapeIdentifier($join_table),
+					$this->escapeIdentifier($alias),
 					implode(' AND ', $parts)
 				);
 			}
@@ -292,10 +319,7 @@
 			$repository = $query->getRepository();
 
 			if (!is_array($repository)) {
-				$table = $this->escapeIdentifier(
-					$repository,
-					$query->isPrepared()
-				);
+				$table = $this->escapeIdentifier($repository);
 
 			} elseif (!is_numeric(key($repository))) {
 				$table = $this->makeTableWithAlias(
@@ -396,7 +420,7 @@
 
 			return sprintf(
 				'%s %s',
-				$this->escapeIdentifier($condition, $query->isPrepared()),
+				$this->escapeIdentifier($condition),
 				$this->makeOperator($query, $placeholder, $operator, $value)
 			);
 		}
@@ -420,10 +444,17 @@
 			}
 
 			if ($operator[1] == ':') {
-				$value = $this->escapeIdentifier($value, $query->isPrepared());
+				$value = $this->escapeIdentifier($value);
 
 			} else {
-				if (strpos($operator, '~') !== FALSE) {
+				if (is_array($value)) {
+					if ($operator == '==') {
+						$operator = 'IN';
+					} else {
+						throw new Flourish\ProgrammerException();
+					}
+
+				} elseif (strpos($operator, '~') !== FALSE) {
 					$value = $operator[0] == '~' ? (static::WILDCARD . $value) : $value;
 					$value = $operator[1] == '~' ? ($value . static::WILDCARD) : $value;
 				}
@@ -442,8 +473,8 @@
 		{
 			return sprintf(
 				'%s %s',
-				$this->escapeIdentifier($key, $query->isPrepared()),
-				$this->escapeIdentifier($value, $query->isPrepared())
+				$this->escapeIdentifier($key),
+				$this->escapeIdentifier($value)
 			);
 		}
 
@@ -457,9 +488,19 @@
 		 */
 		protected function makePlaceholder($query, $placeholder, $value)
 		{
-			$query->addParam($value, $this->placeholderIndex);
+			settype($value, 'array');
 
-			return sprintf($placeholder, $this->placeholderIndex++);
+			$params = array();
+
+			foreach ($value as $param) {
+				$params[] = sprintf($placeholder, $this->placeholderIndex);
+
+				$query->using($param, $this->placeholderIndex);
+
+				$this->placeholderIndex++;
+			}
+
+			return implode(', ', $params);
 		}
 	}
 }

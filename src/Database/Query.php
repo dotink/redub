@@ -28,12 +28,6 @@
 		/**
 		 *
 		 */
-		protected $glue = array();
-
-
-		/**
-		 *
-		 */
 		protected $limit = NULL;
 
 
@@ -53,12 +47,6 @@
 		 *
 		 */
 		protected $params = array();
-
-
-		/**
-		 *
-		 */
-		protected $prepared = FALSE;
 
 
 		/**
@@ -89,6 +77,7 @@
 		public function __clone()
 		{
 			$this->statement = NULL;
+			$this->params = array();
 		}
 
 
@@ -98,47 +87,6 @@
 		public function __toString()
 		{
 			return $this->get();
-		}
-
-
-		/**
-		 *
-		 */
-		public function addParam($value, $index = NULL)
-		{
-			if ($index !== NULL) {
-				$this->params[$index] = $value;
-			} else {
-				$this->params[] = $value;
-			}
-
-		}
-
-
-		/**
-		 *
-		 */
-		public function andWhere($condition, $value)
-		{
-			$this->reset();
-
-			$this->criteria[] = 'AND';
-			$this->criteria[] = $this->glue($condition, $value);
-
-			return $this;
-		}
-
-
-		/**
-		 *
-		 */
-		public function at($offset)
-		{
-			$this->reset();
-
-			$this->offset = $offset;
-
-			return $this;
 		}
 
 
@@ -181,22 +129,13 @@
 		/**
 		 *
 		 */
-		public function getCriteria()
+		public function getCriteria($glue = TRUE)
 		{
-			return $this->criteria;
-		}
+			return $glue
+				? $this->glue($this->criteria)
+				: $this->criteria;
 
-
-		/**
-		 *
-		 */
-		public function getGlue($index)
-		{
-			if (isset($this->glue[$index])) {
-				return $this->glue[$index];
-			}
-
-			return 'AND';
+			return $criteria;
 		}
 
 
@@ -233,15 +172,6 @@
 		public function getParams()
 		{
 			return $this->params;
-		}
-
-
-		/**
-		 *
-		 */
-		public function isPrepared()
-		{
-			return $this->prepared;
 		}
 
 
@@ -300,23 +230,11 @@
 
 			$this->repository = $repository;
 
-			foreach ($links as $repository => $conditions) {
-				$this->link($repository, $conditions);
+			if (func_num_args() == 2) {
+				foreach ($links as $repository => $conditions) {
+					$this->link($repository, $conditions);
+				}
 			}
-
-			return $this;
-		}
-
-
-		/**
-		 *
-		 */
-		public function orWhere($condition, $value)
-		{
-			$this->reset();
-
-			$this->criteria[] = 'OR';
-			$this->criteria[] = $this->glue($condition, $value);
 
 			return $this;
 		}
@@ -329,89 +247,10 @@
 		{
 			$this->reset();
 
-			$this->action     = $action;
-			$this->arguments = $args;
-
-			return $this;
-		}
-
-
-		/**
-		 *
-		 */
-		public function setAction($action)
-		{
-			$this->reset();
-
 			$this->action = $action;
 
-			return $this;
-		}
-
-
-		/**
-		 *
-		 */
-		public function setArguments(array $arguments = array())
-		{
-			$this->reset();
-
-			$this->arguments = $arguments;
-
-			return $this;
-		}
-
-
-		/**
-		 *
-		 */
-		public function setCriteria(array $criteria = array())
-		{
-			$this->criteria = $criteria;
-		}
-
-
-		/**
-		 *
-		 */
-		public function setParams(...$params)
-		{
-			$this->params = $params;
-		}
-
-		/**
-		 *
-		 */
-		public function setPrepared($value)
-		{
-			$this->prepared = (bool) $value;
-
-			return $this;
-		}
-
-
-		/**
-		 *
-		 */
-		public function setRepository($repository)
-		{
-			$this->repository = $repository;
-
-			return $this;
-		}
-
-		/**
-		 *
-		 */
-		public function using(Criteria $criteria)
-		{
-			$this->reset();
-
-			$this->criteria   = array();
-			$this->criteria[] = $criteria->criteria;
-
-			if (count($criteria->arguments)) {
-				$this->arguments = $criteria->arguments;
+			if (func_num_args() == 2) {
+				$this->arguments = $args;
 			}
 
 			return $this;
@@ -421,20 +260,65 @@
 		/**
 		 *
 		 */
-		public function where($condition)
+		public function skip($offset)
 		{
 			$this->reset();
 
-			if (func_num_args() != 2) {
-				$condition = NULL;
-				$value     = array();
+			$this->offset = $offset;
+
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		public function using($params, $placeholderIndex = NULL)
+		{
+			if ($placeholderIndex == NULL) {
+				$this->params = $params;
 
 			} else {
-				$value = func_get_arg(1);
+				$this->params[$placeholderIndex] = $params;
 			}
 
-			$this->criteria   = array();
-			$this->criteria[] = $this->glue($condition, $value);
+			return $this;
+		}
+
+
+		/**
+		 *
+		 */
+		public function where($conditions, $preformatted = FALSE)
+		{
+			$this->reset();
+
+			if ($preformatted) {
+				$this->criteria = $conditions;
+
+			} else {
+				if ($conditions instanceof Criteria) {
+					if (count($conditions->arguments)) {
+						$this->arguments = $conditions->arguments;
+					}
+
+					$conditions = ['all' => $conditions->criteria];
+
+				} else {
+					if (is_array($conditions)) {
+						if (!in_array(key($conditions), ['any', 'all'])) {
+							$conditions = ['all' => $conditions];
+						}
+
+					} else {
+						throw new Flourish\ProgrammerException(
+							'Invalid criteria specified'
+						);
+					}
+				}
+
+				$this->criteria = $this->split($conditions);
+			}
 
 			return $this;
 		}
@@ -447,7 +331,7 @@
 		{
 			$this->reset();
 
-			$this->arguments = $args;
+			$this->arguments = $arguments;
 
 			return $this;
 		}
@@ -456,34 +340,74 @@
 		/**
 		 *
 		 */
-		protected function glue($condition, $value)
+		protected function glue($conditions, $glue = NULL)
 		{
-			if (is_array($value)) {
-				$values = $value;
-				$value  = array();
+			$criteria = array();
+			$count    = count($conditions);
+			$x        = 1;
 
-				if (!in_array($condition, ['any', 'all'])) {
-					throw new Flourish\ProgrammerException(
-						'Invalid criteria passed to query, conditon must be "any" or "all"'
-					);
+			foreach ($conditions as $condition => $value) {
+				if (!is_numeric($condition)) {
+					$criteria[] = $condition != 'any'
+						? $this->glue($value, 'and')
+						: $this->glue($value, 'or');
+
+				} else {
+					$criteria[] = count($value) != 3
+						? $this->glue($value)
+						: $value;
+
+					if ($x < $count) {
+						$criteria[] = $glue;
+						$x++;
+					}
 				}
-
-				$this->glue[count($this->criteria)] = $condition == 'all'
-					? 'AND'
-					: 'OR';
-
-				foreach ($values as $condition => $value) {
-					$value[] = $this->split($condition, $value);
-				}
-
-				return $value;
 			}
 
-			$this->glue[count($this->criteria)] = 'AND';
-
-			return $this->split($condition, $value);
+			return $criteria;
 		}
 
+
+		/**
+		 *
+		 */
+		protected function split($conditions)
+		{
+			$criteria = array();
+
+			foreach ($conditions as $condition => $value) {
+				if (is_numeric($condition)) {
+					if (!is_array($value)) {
+						throw new Flourish\ProgrammerException(
+							'Invalid criteria, non-keyed criteria values must be an array'
+						);
+					}
+
+					$criteria[] = $this->split($value);
+
+				} elseif (in_array($condition, ['any', 'all'])) {
+					if (!is_array($value)) {
+						throw new Flourish\ProgrammerException(
+							'Invalid criteria, any / all values must be arrays'
+						);
+					}
+
+					$criteria[$condition] = $this->split($value);
+
+				} else {
+					if (!preg_match('#^([a-zA-Z0-9._]+)\s+(.{2})$#', $condition, $matches)) {
+						throw new Flourish\ProgrammerException(
+							'Invalid criteria, condition "%s" is malformed',
+							$condition
+						);
+					}
+
+					$criteria[] = [$matches[1], $matches[2], $value];
+				}
+			}
+
+			return $criteria;
+		}
 
 
 		/**

@@ -2,6 +2,7 @@
 
 	use Dotink\Jin\Parser;
 	use Dotink\Flourish;
+	use Redub\Database\Query;
 	use Redub\Database;
 	use Redub\ORM;
 
@@ -10,7 +11,6 @@
 	$start = microtime();
 
 	$driver	    = new Database\PDO\Pgsql();
-	$query      = new Database\Query();
 	$connection = new Database\Connection('default', [
 		'dbname' => 'redub_test'
 	]);
@@ -41,7 +41,7 @@
 	// Basic Select
 	//
 
-	$query
+	$query = (new Query())
 		-> perform('select', [
 			'id', 'first_name', 'last_name', 'age'
 		])
@@ -53,7 +53,7 @@
 	// Full Identifiers
 	//
 
-	$query
+	$query = (new Query())
 		-> perform('select', [
 			'people.id', 'people.first_name'
 		])
@@ -62,17 +62,59 @@
 	echo $driver->getPlatform()->compose($query) . PHP_EOL;
 
 	//
-	// Alias
+	// Criteria
 	//
 
 	$criteria = new Database\Criteria();
 
-	$query
+	$query = (new Query())
 		-> perform('select', [
 			'p.id', 'p.first_name', 'p.last_name'
 		])
 		-> on(['people' => 'p'])
-		-> using($criteria->where('p.id ==', 1));
+		-> where(
+			$criteria->where(['p.id ==' => 1])
+		);
+
+	//
+	// Where
+	//
+
+	$query = (new Query())
+		-> perform('select')
+		-> with(['p.id', 'p.first_name', 'p.last_name'])
+		-> on(['people' => 'p'])
+		-> where([
+			'all' => [
+				'p.first_name ==' => 'Matthew',
+				'p.last_name =='  => 'Sahagian',
+				[
+					'any' => [
+						'p.owner =='  => TRUE,
+						'p.banned ==' => TRUE
+					]
+				]
+			]
+		]);
+
+	echo $driver->getPlatform()->compose($query) . PHP_EOL;
+
+
+	//
+	// Where
+	//
+
+	$query = (new Query())
+		-> perform('select')
+		-> with(['p.id', 'p.first_name', 'p.last_name'])
+		-> on(['people' => 'p'])
+		-> where([
+			'all' => [
+				'p.first_name ==' => 'Matthew',
+				'p.last_name =='  => 'Sahagian'
+			]
+		]);
+
 
 	echo $driver->getPlatform()->compose($query) . PHP_EOL;
 

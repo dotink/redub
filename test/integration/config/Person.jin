@@ -1,14 +1,17 @@
 [People]
-mapTo    = people
-model    = Person
-identity = id
-uniqueOn = [
+mapTo     = people
+model     = Person
+identity  = id
+uniqueOn  = [
 	["team", "teamRank"],
 	["email"]
 ]
-ordering = {
+ordering  = {
 	"lastName"  : "asc",
 	"firstName" : "asc"
+}
+callbacks = {
+	"ValidationService::validate" : ["insert", "update"]
 }
 
 	[People.fields.id]

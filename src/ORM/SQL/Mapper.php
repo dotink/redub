@@ -66,7 +66,7 @@
 					$this->translate($query
 						-> perform('select', array_keys($mapping))
 						-> on($repository)
-						-> using($criteria)
+						-> where($criteria)
 					);
 				},
 				$repository,
@@ -112,15 +112,17 @@
 			$this->map           = array();
 			$this->tableAliases  = array();
 			$this->columnAliases = array();
-			$repository          = $query->getRepository();
+			$this->query         = $query;
+			$repository          = $this->query->getRepository();
 			$table_name          = $this->configuration->getRepositoryMap($repository);
 			$mapping             = $this->configuration->getMapping($repository);
+			$table_alias         = $this->getTableAlias($table_name);
 
-			$query->setRepository([$table_name => $this->getTableAlias($table_name)]);
-			$this->addMapping($repository, $this->getTablealias($table_name));
+			$this->addMapping($repository, $table_alias);
 
-			$this->translateArguments($repository, $query);
-			$this->translateCriteria($repository, $query);
+			$query->on([$table_name => $table_alias]);
+			$query->with($this->translateArguments($repository, $query->getArguments()));
+			$query->where($this->translateCriteria($repository, $query->getCriteria(FALSE)), TRUE);
 
 			return $query;
 		}
@@ -234,11 +236,11 @@
 		/**
 		 *
 		 */
-		protected function translateArguments($repository, Query $query)
+		protected function translateArguments($repository, $original_arguments)
 		{
 			$arguments = array();
 
-			foreach ($query->getArguments() as $argument) {
+			foreach ($original_arguments as $argument) {
 				$parts = explode('.', $argument);
 				$field = array_pop($parts);
 
@@ -247,7 +249,7 @@
 				}
 
 				$path   = implode('.', $parts);
-				$column = $this->translatePath($path, $field, $query);
+				$column = $this->translatePath($path, $field);
 
 				if (!$column) {
 					//
@@ -263,51 +265,56 @@
 				$arguments[$this->map[$path] . '.' . $column] = $alias;
 			}
 
-			$query->setArguments($arguments);
+			return $arguments;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function translateCriteria($repository, Query $query)
+		protected function translateCriteria($repository, $original_criteria)
 		{
-			$criteria = $query->getCriteria();
+			$criteria = array();
 
-			foreach ($criteria as $i => $conditions) {
-				if (!is_array($conditions)) {
+			foreach ($original_criteria as $condition => $value) {
+				if (!is_numeric($condition) || count($value) != 3) {
+					$criteria[$condition] = $this->translateCriteria($repository, $value);
 					continue;
 				}
 
-				foreach ($conditions as $j => $condition) {
-					$parts  = explode('.', $condition[0]);
-					$field  = array_pop($parts);
+				$parts = explode('.', $value[0]);
+				$field = array_pop($parts);
 
-					if (!count($parts) || $parts[0] != $repository) {
-						array_unshift($parts, $repository);
-					}
-
-					$path   = implode('.', $parts);
-					$column = $this->translatePath($path, $field, $query);
-
-					if (!$column) {
-						//
-						// Throw a fit
-						//
-					}
-
-					$criteria[$i][$j][0] = $this->map[$path] . '.' . $column;
+				if (!count($parts) || $parts[0] != $repository) {
+					array_unshift($parts, $repository);
 				}
+
+				$path   = implode('.', $parts);
+				$column = $this->translatePath($path, $field);
+
+				if (!$column) {
+					//
+					// Throw a fit
+					//
+				}
+
+				$criteria[$condition] = [
+					$this->map[$path] . '.' . $column,
+					$value[1],
+					$value[2]
+				];
 			}
 
-			$query->setCriteria($criteria);
+			print_r($criteria);
+
+			return $criteria;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function translatePath($path, $field, Query $query)
+		protected function translatePath($path, $field)
 		{
 			$parts  = explode('.', $path);
 			$target = array_shift($parts);
@@ -329,7 +336,7 @@
 					foreach ($route as $dest_table_name => $link) {
 						$dest = $this->getTableAlias($dest_table_name);   // 'tX' - where X == 1+
 
-						$query->link($dest_table_name, [$dest,
+						$this->query->link($dest_table_name, [$dest,
 							$source . '.' . key($link) . ' =:' => // t0.id
 							$dest   . '.' . current($link)        // t1.person
 						]);

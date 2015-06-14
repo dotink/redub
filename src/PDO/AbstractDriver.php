@@ -104,8 +104,6 @@
 		 */
 		public function prepare($handle, Database\Query $query)
 		{
-			$query->setPrepared(TRUE);
-
 			$statement = $this->getPlatform()->compose($query, '?', static::PLACEHOLDER_START);
 			$statement = $handle->prepare($statement);
 

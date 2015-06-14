@@ -1,5 +1,7 @@
 [Redub]
-convention = conventions\flourish
+convention  = conventions\flourish
+scaffolding = TRUE
+
 
 	[Redub.connections.default]
 	mapper = mappers\sql

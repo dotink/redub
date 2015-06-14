@@ -51,7 +51,7 @@
 				);
 			}
 
-			if (!$this->getHandle()) {
+			if (!$this->setup()) {
 				throw new Flourish\ConnectivityException(
 					'Unable to connect to database "%s" on connection "%s"',
 					$this->getConfig('dbname'),
@@ -171,7 +171,7 @@
 		/**
 		 *
 		 */
-		protected function getHandle()
+		protected function setup()
 		{
 			if (!$this->handle) {
 				$this->handle = $this->driver->connect($this);
