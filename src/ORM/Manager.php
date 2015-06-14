@@ -78,13 +78,13 @@
 		/**
 		 *
 		 */
-		public function __construct(ConfigurationInterface $config = NULL, ModelBuilder $builder = NULL)
+		public function __construct(ConfigurationInterface $config = NULL, Builder $builder = NULL)
 		{
 			if (!static::$reflector) {
 				static::$reflector = $this->getReflection(static::MODEL_CLASS)->getProperty('data');
 			}
 
-			$this->builder       = $builder ?: new ModelBuilder();
+			$this->builder       = $builder ?: new Builder();
 			$this->configuration = $config  ?: new Configuration\Native();
 
 			static::$reflector->setAccessible(TRUE);
@@ -173,9 +173,9 @@
 		/**
 		 *
 		 */
-		public function getConnection($class)
+		public function getConnection($repository)
 		{
-			$namespace = $this->getReflection($class)->getNamespaceName();
+			$namespace = $this->getReflection($repository)->getNamespaceName();
 
 			if (!$this->connections[$namespace]) {
 				throw new Flourish\ProgrammerException(
@@ -206,77 +206,32 @@
 		}
 
 
+
 		/**
-		 * Gets the model for a repository
+		 * Get a completely empty entity (unconstructed) for a given respository
 		 *
 		 * @access public
-		 * @param Repository $repository The repository for which to get the model
-		 * @return string The model for the repository
-		 */
-		public function getRepositoryModel($repository)
-		{
-			$model = $this->getConfiguration()->getModel($repository);
-
-			if (class_exists($model)) {
-				return $model;
-			}
-
-			//
-			// TODO: Attempt to auto scaffold model
-			//
-
-			return $model;
-		}
-
-
-		/**
-		 *
 		 * @param string $repository The repository class
+		 * @return Model The entity instance prior to constructor execution, with no data
 		 */
-		public function loadEntity($repository, $key, $return_empty)
+		public function getEntity($repository)
 		{
-			$connection = $this->getConnection($repository);
-			$entity     = $this->initializeEntity($repository);
-			$mapper     = $this->getMapper($repository);
+			$model      = $this->resolve($repository);
+			$reflection = $this->getReflection($model);
 
-			if (!($result = $mapper->loadEntityFromKey($connection, $entity, $key))) {
-				if ($result === FALSE) {
-					throw new Flourish\ProgrammerException(
-						'Invalid key specified, does not constitute a unique constraint'
-					);
-				}
-
-				return $return_empty
-					? $this->create($repository)
-					: NULL;
-			}
-
-			return $result;
+			return $reflection->newInstanceWithoutConstructor();
 		}
 
 
 		/**
+		 * Register a connection to one or more namespaces
 		 *
+		 * @access protected
+		 * @param ConnectionInterface $connection The connection to register
+		 * @param string|array The namespace(s) with which to register the connection
+		 * @return void
 		 */
-		public function makeEntity($repository, $params = array())
-		{
-			$entity = $this->initializeEntity($repository);
-			$mapper = $this->getMapper($repository);
-
-			$mapper->loadEntityDefaults($entity);
-
-			if (is_callable([$entity, '__construct'])) {
-				$entity->__construct(...$params);
-			}
-
-			return $entity;
-		}
-
-
-		/**
-		 *
-		 */
-		public function register(ConnectionInterface $connection, $namespaces)
+		protected function register(ConnectionInterface $connection, $namespaces)
 		{
 			settype($namespaces, 'array');
 
@@ -296,18 +251,49 @@
 
 
 		/**
-		 * Initializes an entity (but does not construct) by using a model's reflection class
+		 * Resolve the model class for a given repository
 		 *
-		 * @access protected
-		 * @param Reflector $reflection The reflection for the model
-		 * @return Model The entity instance prior to constructor execution
+		 * @access public
+		 * @param string $repository The repository class
+		 * @return string The model class for the repository
 		 */
-		protected function initializeEntity($repository)
+		protected function resolve($repository)
 		{
-			$model    = $this->getRepositoryModel($repository);
-			$instance = $this->getReflection($model)->newInstanceWithoutConstructor();
+			$config = $this->getConfiguration();
+			$model  = $config->getModel($repository);
+			$base   = 'Redub\\Base\\' . $config->getModel($repository);
 
-			return $instance;
+			if (!class_exists($base) && $this->builder) {
+				$base_path = $config->find('basePath', 'redub-' . md5(__DIR__));
+				$full_path = $this->builder->getPath($base, $base_path);
+
+				if (!file_exists($full_path) || filemtime($full_path) < strtotime('-1 second')) {
+					$this->builder->build($config, $repository, $base, $full_path);
+				}
+
+				include($full_path);
+
+				if (!class_exists($model)) {
+					$class_parts = explode('\\', $model);
+					$class_name  = array_pop($class_parts);
+					$namespace   = implode('\\', $class_parts);
+					$code        = "namespace $namespace { class $class_name extends $base {} }";
+
+					eval($code);
+
+					return $model;
+				}
+			}
+
+			if (class_exists($model)) {
+				return $model;
+			}
+
+			throw new Flourish\ProgrammerException(
+				'Could not resolve model class for repository "%s", class "%s" not found',
+				$repository,
+				$model
+			);
 		}
 	}
 }

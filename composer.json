@@ -19,7 +19,8 @@
 	"require": {
 		"php": ">=5.4.0",
 		"dotink/flourish-core": "dev-master",
-		"dotink/jin": "^1.2.0"
+		"dotink/jin": "^1.2.0",
+		"nette/php-generator": "^2.3.0"
 	},
 	"autoload": {
 		"classmap": ["src/"]

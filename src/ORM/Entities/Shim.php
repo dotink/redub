@@ -1,6 +1,6 @@
 <?php namespace Redub\ORM
 {
-	class ModelBuilder
+	class Shim
 	{
 
 	}

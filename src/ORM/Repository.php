@@ -36,11 +36,22 @@
 
 
 		/**
+		 * Create a new entity
 		 *
 		 */
 		public function create(...$params)
 		{
-			return $this->manager->makeEntity($this->class, $params);
+			$class  = get_called_class();
+			$entity = $this->manager->getEntity($class);
+			$mapper = $this->manager->getMapper($class);
+
+			$mapper->loadEntityDefaults($entity);
+
+			if (is_callable([$entity, '__construct'])) {
+				$entity->__construct(...$params);
+			}
+
+			return $entity;
 		}
 
 
@@ -81,7 +92,26 @@
 		 */
 		public function find($key, $create_empty = FALSE)
 		{
-			return $this->manager->loadEntity($this->class, $key, $create_empty);
+			$class      = get_called_class();
+			$entity     = $this->manager->getEntity($class);
+			$mapper     = $this->manager->getMapper($class);
+			$connection = $this->manager->getConnection($class);
+			$result     = $mapper->loadEntityFromKey($connection, $entity, $key);
+
+			if ($result === FALSE) {
+				//
+				// If the result is FALSE it means we actually got more than one back
+				//
+
+				throw new Flourish\ProgrammerException(
+					'Invalid key specified, does not constitute a unique constraint'
+				);
+
+			}
+
+			return ($result === NULL && $create_empty)
+				? $this->create()
+				: $result;
 		}
 
 

@@ -255,11 +255,11 @@
 		/**
 		 *
 		 */
-		public function find($key)
+		public function find($key, $default = NULL)
 		{
 			return isset($this->config[$key])
 				? $this->config[$key]
-				: NULL;
+				: $default;
 		}
 
 
