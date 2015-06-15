@@ -8,6 +8,12 @@
 		/**
 		 *
 		 */
+		protected $class = NULL;
+
+
+		/**
+		 *
+		 */
 		protected $manager = NULL;
 
 
