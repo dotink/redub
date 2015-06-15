@@ -45,11 +45,19 @@
 			}
 
 			try {
-				return new PDO(
-					$this->createDSN($connection),
-					$connection->getConfig('user', static::DEFAULT_USER),
-					$connection->getConfig('pass', NULL)
+				$connection->setDriver($this);
+				$connection->setHandle(
+					new PDO(
+						$this->createDSN($connection),
+						$connection->getConfig('user', static::DEFAULT_USER),
+						$connection->getConfig('pass', NULL),
+						[
+							PDO::ATTR_PERSISTENT => TRUE
+						]
+					)
 				);
+
+				return TRUE;
 
 			} catch (PDOException $e) {
 				return FALSE;

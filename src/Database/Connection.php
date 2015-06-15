@@ -28,14 +28,10 @@
 		/**
 		 *
 		 */
-		public function __construct($alias, $config = array(), DriverInterface $driver = NULL)
+		public function __construct($alias, $config = array())
 		{
 			$this->alias  = $alias;
 			$this->config = $config;
-
-			if ($driver) {
-				$this->setDriver($driver);
-			}
 		}
 
 
@@ -171,10 +167,19 @@
 		/**
 		 *
 		 */
+		public function setHandle($handle)
+		{
+			$this->handle = $handle;
+		}
+
+
+		/**
+		 *
+		 */
 		protected function setup()
 		{
 			if (!$this->handle) {
-				$this->handle = $this->driver->connect($this);
+				$this->driver->connect($this);
 			}
 
 			return $this->handle;

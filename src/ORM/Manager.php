@@ -143,10 +143,10 @@
 				);
 			}
 
-			$connection->setDriver($driver);
+			$driver->connect($connection);
 			$this->register($connection, isset($connections[$alias]['namespaces'])
 				? $connections[$alias]['namespaces']
-				: ['\\']
+				: ['*']
 			);
 		}
 
@@ -177,11 +177,15 @@
 		{
 			$namespace = $this->getReflection($repository)->getNamespaceName();
 
-			if (!$this->connections[$namespace]) {
-				throw new Flourish\ProgrammerException(
-					'Could not find connection for namespace "%s"',
-					$namespace ?: '\\'
-				);
+			if (!isset($this->connections[$namespace])) {
+				if (!isset($this->connections['*'])) {
+					throw new Flourish\ProgrammerException(
+						'Could not find connection for namespace "%s"',
+						$namespace ?: '\\'
+					);
+				}
+
+				$namespace = '*';
 			}
 
 			return $this->connections[$namespace];
