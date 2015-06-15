@@ -35,7 +35,7 @@
 		 * @param ConnectionInterface $connection The connection from which to get config settings
 		 * @return boolean TRUE if the connection is enabled, FALSE otherwise
 		 */
-		public function connect(Database\ConnectionInterface $connection)
+		public function connect(Database\ConnectionInterface $connection, $immediate = FALSE)
 		{
 			if (!$connection->getConfig('dbname')) {
 				throw new Flourish\ProgrammerException(
@@ -46,16 +46,19 @@
 
 			try {
 				$connection->setDriver($this);
-				$connection->setHandle(
-					new PDO(
-						$this->createDSN($connection),
-						$connection->getConfig('user', static::DEFAULT_USER),
-						$connection->getConfig('pass', NULL),
-						[
-							PDO::ATTR_PERSISTENT => TRUE
-						]
-					)
-				);
+
+				if ($immediate) {
+					$connection->setHandle(
+						new PDO(
+							$this->createDSN($connection),
+							$connection->getConfig('user', static::DEFAULT_USER),
+							$connection->getConfig('pass', NULL),
+							[
+								PDO::ATTR_PERSISTENT => TRUE
+							]
+						)
+					);
+				}
 
 				return TRUE;
 

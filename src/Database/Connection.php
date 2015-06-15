@@ -179,7 +179,7 @@
 		protected function setup()
 		{
 			if (!$this->handle) {
-				$this->driver->connect($this);
+				$this->driver->connect($this, TRUE);
 			}
 
 			return $this->handle;
