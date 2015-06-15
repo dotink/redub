@@ -16,26 +16,26 @@
 			'bigint'			=> 'integer',
 			'serial'			=> 'integer',
 			'bigserial'			=> 'integer',
-			'timestamp'			=> 'timestamp',
-			'date'				=> 'date',
-			'time'				=> 'time',
-			'uuid'              => 'varchar',
-			'character varying'	=> 'varchar',
-			'character'			=> 'char',
 			'real'				=> 'float',
 			'double'			=> 'float',
 			'numeric'			=> 'float',
-			'bytea'				=> 'blob',
 			'text'				=> 'text',
 			'mediumtext'		=> 'text',
 			'longtext'			=> 'text',
-			'point'             => 'varchar',
-			'line'              => 'varchar',
-			'lseg'              => 'varchar',
-			'box'               => 'varchar',
-			'path'              => 'varchar',
-			'polygon'           => 'varchar',
-			'circle'            => 'varchar'
+			'point'             => 'string',
+			'line'              => 'string',
+			'lseg'              => 'string',
+			'box'               => 'string',
+			'path'              => 'string',
+			'polygon'           => 'string',
+			'circle'            => 'string',
+			'uuid'              => 'string',
+			'character varying'	=> 'string',
+			'character'			=> 'character',
+			'timestamp'			=> 'timestamp',
+			'date'				=> 'date',
+			'time'				=> 'time',
+			'bytea'				=> 'binary'
 		];
 
 		/**
@@ -78,6 +78,39 @@
 
 
 		/**
+		 *
+		 */
+		public function resolveFieldInfo($connection, $table, $field, $type)
+		{
+			$info  = $this->resolveTableColumnInfo($connection, $table);
+			$alias = $connection->getAlias();
+
+			if (!isset($info[$field])) {
+				throw new Flourish\ProgrammerException(
+					'Could not resolve column information for %s on table %s',
+					$field,
+					$table
+				);
+			}
+
+			if (!isset($info[$field][$type])) {
+				switch ($type) {
+					case 'default': return NULL;
+					case 'auto':    return FALSE;
+					default:
+						throw new Flourish\ProgrammerException(
+							'Cannot get information on field "%s" for "%s", not available',
+							$field,
+							$type
+						);
+				}
+			}
+
+			return $info[$field][$type];
+		}
+
+
+		/**
 		 * Resolves a list of repositories for the connection
 		 */
 		public function resolveRepositories($connection)
@@ -112,13 +145,6 @@
 
 			return $this->tables[$alias] = $tables;
 		}
-
-
-
-
-
-
-
 
 
 		/**
@@ -242,7 +268,7 @@
 				//
 
 				if ($info['type'] == 'integer' && stripos($row['default'], 'nextval(') !== FALSE) {
-					$info['auto_increment'] = TRUE;
+					$info['auto'] = TRUE;
 
 				} elseif ($row['default'] !== NULL) {
 					if (preg_match('#^NULL::[\w\s]+$#', $row['default'])) {
@@ -270,11 +296,17 @@
 				}
 
 				$info['comment']      = $row['comment'];
-				$info['not_null']     = $row['not_null'] == 't';
+				$info['nullable']     = $row['not_null'] != 't';
 				$column_info[$column] = $info;
 			}
 
-			return $this->columnInfo[$alias][$schema . '.' . $table] = $column_info;
+			print_r($column_info);
+
+			if ($schema == static::DEFAULT_SCHEMA) {
+				return $this->columnInfo[$alias][$table] = $column_info;
+			} else {
+				return $this->columnInfo[$alias][$schema . '.' . $table] = $column_info;
+			}
 		}
 	}
 }
