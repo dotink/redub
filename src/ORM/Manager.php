@@ -154,6 +154,24 @@
 		/**
 		 *
 		 */
+		public function createCriteria()
+		{
+			new Criteria();
+		}
+
+
+		/**
+		 *
+		 */
+		public function createQuery()
+		{
+			return new Query();
+		}
+
+
+		/**
+		 *
+		 */
 		public function getConfiguration()
 		{
 			if ($this->cache) {

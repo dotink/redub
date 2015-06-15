@@ -14,10 +14,9 @@
 		/**
 		 *
 		 */
-		public function __construct(Manager $manager = NULL, Criteria $criteria = NULL)
+		public function __construct(Manager $manager)
 		{
-			$this->manager  = $manager  ?: new Manager();
-			$this->criteria = $criteria ?: new Criteria();
+			$this->manager  = $manager;
 			$this->class    = get_class($this);
 		}
 
@@ -25,13 +24,13 @@
 		/**
 		 *
 		 */
-		public function build(callable $builder, $order = array(), $limit = NULL, $page = 1)
+		public function build(callable $builder)
 		{
-			$criteria = clone $this->criteria;
+			$query = $this->manager->createQuery();
 
-			$builder($criteria);
+			$builder($query);
 
-			return $this->manager->loadCollection($this->class, $criteria, $order, $limit, $page);
+			return $this->manager->loadCollection($this->class, $query);
 		}
 
 
@@ -41,9 +40,8 @@
 		 */
 		public function create(...$params)
 		{
-			$class  = get_called_class();
-			$entity = $this->manager->getEntity($class);
-			$mapper = $this->manager->getMapper($class);
+			$entity = $this->manager->getEntity($this->class);
+			$mapper = $this->manager->getMapper($this->class);
 
 			$mapper->loadEntityDefaults($entity);
 
@@ -61,24 +59,41 @@
 		 */
 		public function fetch($build_methods, $order = array(), $limit = NULL, $page = 1)
 		{
-			$criteria = clone $this->criteria;
+			$criteria = $this->manager->createCriteria();
+			$query    = $this->manager->createQuery();
 
-			settype($build_methods, 'array');
+			if (is_callable($build_methods)) {
+				$build_methods($criteria);
 
-			foreach ($build_method as $build_method) {
-				$builder = [$this, $build_method];
+			} else {
+				settype($build_methods, 'array');
 
-				if (!is_callable($builder)) {
-					throw new Flourish\ProgrammerException(
-						'Cannot fetch perform fetch, build method "%s" is not available',
-						$build_method
-					);
+				foreach ($build_methods as $build_method) {
+					if (is_callable($build_method)) {
+						$builder = $build_method;
+
+					} elseif (is_callable([$this, $build_method])) {
+						$builder = [$this, $build_method];
+
+					} else {
+						throw new Flourish\ProgrammerException(
+							'Cannot perform fetch, build method "%s" is not available',
+							$build_method
+						);
+					}
+
+					$builder($criteria);
 				}
-
-				$builder($criteria);
 			}
 
-			return $this->manager->loadCollection($this->class, $criteria, $order, $limit, $page);
+			$query
+				-> where($criteria)
+				-> sorted($order)
+				-> limit($limit)
+				-> skip(($page - 1) * $limit)
+			;
+
+			return $this->manager->loadCollection($this->class, $query);
 		}
 
 
@@ -92,10 +107,9 @@
 		 */
 		public function find($key, $create_empty = FALSE)
 		{
-			$class      = get_called_class();
-			$entity     = $this->manager->getEntity($class);
-			$mapper     = $this->manager->getMapper($class);
-			$connection = $this->manager->getConnection($class);
+			$entity     = $this->manager->getEntity($this->class);
+			$mapper     = $this->manager->getMapper($this->class);
+			$connection = $this->manager->getConnection($this->class);
 			$result     = $mapper->loadEntityFromKey($connection, $entity, $key);
 
 			if ($result === FALSE) {
