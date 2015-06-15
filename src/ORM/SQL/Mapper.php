@@ -16,6 +16,12 @@
 		/**
 		 *
 		 */
+		protected $configuration = NULL;
+
+
+		/**
+		 *
+		 */
 		protected $data = NULL;
 
 
@@ -28,7 +34,7 @@
 		/**
 		 *
 		 */
-		protected $configuration = NULL;
+		protected $map = array();
 
 
 		/**
@@ -118,11 +124,16 @@
 			$mapping             = $this->configuration->getMapping($this->repository);
 			$table_alias         = $this->getTableAlias($table_name);
 
-			$this->addMapping($this->repository, $table_alias);
+			$this->addMapping('tables', NULL, $this->repository);
 
-			$query->on([$table_name => $table_alias]);
-			$query->with($this->translateArguments($query->getArguments()));
-			$query->where($this->translateCriteria($query->getCriteria(FALSE)), TRUE);
+			$arguments = $this->translateArguments($query->getArguments());
+			$criteria  = $this->translateCriteria($query->getCriteria(FALSE));
+
+			$query
+				-> on([$table_name => $table_alias])
+				-> with($arguments)
+				-> where($criteria, TRUE)
+			;
 
 			return $query;
 		}
@@ -131,9 +142,13 @@
 		/**
 		 *
 		 */
-		protected function addMapping($path, $alias)
+		protected function addMapping($key, $path, $alias)
 		{
-			$this->map[$path] = $alias;
+			if (!isset($key)) {
+				$this->map[$key] == array();
+			}
+
+			$this->map[$key][$path] = $alias;
 		}
 
 
@@ -211,15 +226,11 @@
 		 */
 		protected function reduce($source_data)
 		{
-			$data       = array();
-			$lookup     = array_flip($this->map);
-			$mapping    = $this->configuration->getMapping(reset($lookup));
+			$data = array();
 
-			foreach ($lookup as $alias => $map) {
+			foreach ($this->map['columns'] as $map => $alias) {
 				$parts = explode('.', $map);
-				$value = $alias[0] == 'c'
-					? $source_data[$alias]
-					: array();
+				$value = $source_data[$alias];
 
 				foreach (array_reverse($parts) as $part) {
 					$value = [$part => $value];
@@ -235,23 +246,39 @@
 		/**
 		 *
 		 */
-		protected function translateArguments($original_args)
+		protected function translateArguments($original_arguments)
 		{
-			$args = array();
+			$arguments = array();
 
-			foreach ($original_args as $arg) {
+			foreach ($original_arguments as $arg) {
 				$parts = explode('.', $arg);
 				$field = array_pop($parts);
 
-				if (count($parts) > 1 && $parts[0] == $this->repository) {
+				if (count($parts) && $parts[0] == $this->repository) {
 					array_shift($parts);
 				}
 
-				$cpath        = $this->translatePath($parts, $field, TRUE);
-				$args[$cpath] = end($this->map);
+				$path = implode('.', $parts);
+
+				if ($path && !$this->map['tables'][$path]) {
+					$this->translatePath($path, $field);
+				}
+
+				$target  = $this->map['tables'][$path];
+				$column  = $this->configuration->getMapping($target, $field);
+				$table   = $this->configuration->getRepositoryMap($target);
+				$select  = $this->tableAliases[$table] . '.' . $column;
+				$alias   = $this->getColumnAlias($select);
+				$mapping = $path
+					? $path . '.' . $field
+					: $field;
+
+				$this->addMapping('columns', $mapping, $alias);
+
+				$arguments[$select] = $alias;
 			}
 
-			return $args;
+			return $arguments;
 		}
 
 
@@ -271,18 +298,23 @@
 				$parts = explode('.', $value[0]);
 				$field = array_pop($parts);
 
-				if (count($parts) > 1 && $parts[0] == $this->repository) {
+				if (count($parts) && $parts[0] == $this->repository) {
 					array_shift($parts);
 				}
 
-				$criteria[$condition] = [
-					$this->translatePath($parts, $field),
-					$value[1],
-					$value[2]
-				];
-			}
+				$path = implode('.', $parts);
 
-			print_r($criteria);
+				if ($path && !isset($this->map[$path])) {
+					$this->translatePath($path, $field);
+				}
+
+				$target  = $this->map['tables'][$path];
+				$column  = $this->configuration->getMapping($target, $field);
+				$table   = $this->configuration->getRepositoryMap($target);
+				$select  = $this->tableAliases[$table] . '.' . $column;
+
+				$criteria[$condition] = [$select, $value[1], $value[2]];
+			}
 
 			return $criteria;
 		}
@@ -291,54 +323,37 @@
 		/**
 		 *
 		 */
-		protected function translatePath($parts, $field, $map = FALSE)
+		protected function translatePath($path, $field, $select = FALSE)
 		{
-			$path   = implode('.', $parts);
 			$target = $this->repository;
-			$source = $this->map[$target];
+			$parts  = explode('.', $path);
+			$source = $this->map['tables'][$path];
 
-			if (count($parts) > 1 && !isset($this->map[$path])) {
-				foreach ($parts as $relation) {
-					$route  = $this->configuration->getRoute($target, $relation);  // ['users' => ['id' => 'person']]
-					$target = $this->configuration->getTarget($target, $relation); // 'Users'
+			foreach ($parts as $relation) {
+				$route  = $this->configuration->getRoute($target, $relation);  // ['users' => ['id' => 'person']]
+				$target = $this->configuration->getTarget($target, $relation); // 'Users'
 
-					if (!$target) {
-						throw new Flourish\ProgrammerException(
-							'Criteria or arguments contain invalid path to field "%s" (%s)',
-							$field,
-							$path
-						);
-					}
-
-					foreach ($route as $dest_table_name => $link) {
-						$dest = $this->getTableAlias($dest_table_name);   // 'tX' - where X == 1+
-
-						$this->query->link($dest_table_name, [$dest,
-							$source . '.' . key($link) . ' =:' => // t0.id
-							$dest   . '.' . current($link)        // t1.person
-						]);
-
-						$source = $dest; // set source to destination and continue
-					}
+				if (!$target) {
+					throw new Flourish\ProgrammerException(
+						'Criteria or arguments contain invalid path to field "%s" (%s)',
+						$field,
+						$path
+					);
 				}
 
-				$this->addMapping($path, $dest); // Set the path to our final destination
+				foreach ($route as $dest_table_name => $link) {
+					$dest = $this->getTableAlias($dest_table_name);   // 'tX' - where X == 1+
+
+					$this->query->link($dest_table_name, [$dest,
+						$source . '.' . key($link) . ' =:' => // t0.id
+						$dest   . '.' . current($link)        // t1.person
+					]);
+
+					$source = $dest; // set source to destination and continue
+				}
 			}
 
-			$column = $this->configuration->getMapping($target, $field);
-
-			if (!$column) {
-
-			}
-
-			if ($map) {
-				$cpath = ($path ? '.' : NULL) . $field;
-				$alias = $this->getColumnAlias($cpath);
-
-				$this->addMapping($cpath, $alias);
-			}
-
-			return $this->map[$path ?: $this->repository] . '.' . $column;
+			$this->addMapping('tables', $path, $target); // Set the path to our final destination
 		}
 	}
 }
