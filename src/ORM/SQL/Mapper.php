@@ -113,16 +113,16 @@
 			$this->tableAliases  = array();
 			$this->columnAliases = array();
 			$this->query         = $query;
-			$repository          = $this->query->getRepository();
-			$table_name          = $this->configuration->getRepositoryMap($repository);
-			$mapping             = $this->configuration->getMapping($repository);
+			$this->repository    = $this->query->getRepository();
+			$table_name          = $this->configuration->getRepositoryMap($this->repository);
+			$mapping             = $this->configuration->getMapping($this->repository);
 			$table_alias         = $this->getTableAlias($table_name);
 
-			$this->addMapping($repository, $table_alias);
+			$this->addMapping($this->repository, $table_alias);
 
 			$query->on([$table_name => $table_alias]);
-			$query->with($this->translateArguments($repository, $query->getArguments()));
-			$query->where($this->translateCriteria($repository, $query->getCriteria(FALSE)), TRUE);
+			$query->with($this->translateArguments($query->getArguments()));
+			$query->where($this->translateCriteria($query->getCriteria(FALSE)), TRUE);
 
 			return $query;
 		}
@@ -213,8 +213,7 @@
 		{
 			$data       = array();
 			$lookup     = array_flip($this->map);
-			$repository = reset($lookup);
-			$mapping    = $this->configuration->getMapping($repository);
+			$mapping    = $this->configuration->getMapping(reset($lookup));
 
 			foreach ($lookup as $alias => $map) {
 				$parts = explode('.', $map);
@@ -229,77 +228,55 @@
 				$data = array_replace_recursive($data, $value);
 			}
 
-			return $data[$repository];
+			return $data;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function translateArguments($repository, $original_arguments)
+		protected function translateArguments($original_args)
 		{
-			$arguments = array();
+			$args = array();
 
-			foreach ($original_arguments as $argument) {
-				$parts = explode('.', $argument);
+			foreach ($original_args as $arg) {
+				$parts = explode('.', $arg);
 				$field = array_pop($parts);
 
-				if (!count($parts) || $parts[0] != $repository) {
-					array_unshift($parts, $repository);
+				if (count($parts) > 1 && $parts[0] == $this->repository) {
+					array_shift($parts);
 				}
 
-				$path   = implode('.', $parts);
-				$column = $this->translatePath($path, $field);
-
-				if (!$column) {
-					//
-					// blow shit up
-					//
-				}
-
-				$cpath = $path . '.' . $field;
-				$alias = $this->getColumnAlias($cpath);
-
-				$this->addMapping($cpath, $alias);
-
-				$arguments[$this->map[$path] . '.' . $column] = $alias;
+				$cpath        = $this->translatePath($parts, $field, TRUE);
+				$args[$cpath] = end($this->map);
 			}
 
-			return $arguments;
+			return $args;
 		}
 
 
 		/**
 		 *
 		 */
-		protected function translateCriteria($repository, $original_criteria)
+		protected function translateCriteria($original_criteria)
 		{
 			$criteria = array();
 
 			foreach ($original_criteria as $condition => $value) {
 				if (!is_numeric($condition) || count($value) != 3) {
-					$criteria[$condition] = $this->translateCriteria($repository, $value);
+					$criteria[$condition] = $this->translateCriteria($value);
 					continue;
 				}
 
 				$parts = explode('.', $value[0]);
 				$field = array_pop($parts);
 
-				if (!count($parts) || $parts[0] != $repository) {
-					array_unshift($parts, $repository);
-				}
-
-				$path   = implode('.', $parts);
-				$column = $this->translatePath($path, $field);
-
-				if (!$column) {
-					//
-					// Throw a fit
-					//
+				if (count($parts) > 1 && $parts[0] == $this->repository) {
+					array_shift($parts);
 				}
 
 				$criteria[$condition] = [
-					$this->map[$path] . '.' . $column,
+					$this->translatePath($parts, $field),
 					$value[1],
 					$value[2]
 				];
@@ -314,16 +291,16 @@
 		/**
 		 *
 		 */
-		protected function translatePath($path, $field)
+		protected function translatePath($parts, $field, $map = FALSE)
 		{
-			$parts  = explode('.', $path);
-			$target = array_shift($parts);
+			$path   = implode('.', $parts);
+			$target = $this->repository;
 			$source = $this->map[$target];
 
-			if (!isset($this->map[$path])) {
+			if (count($parts) > 1 && !isset($this->map[$path])) {
 				foreach ($parts as $relation) {
-					$route   = $this->configuration->getRoute($target, $relation);  // ['users' => ['id' => 'person']]
-					$target  = $this->configuration->getTarget($target, $relation); // 'Users'
+					$route  = $this->configuration->getRoute($target, $relation);  // ['users' => ['id' => 'person']]
+					$target = $this->configuration->getTarget($target, $relation); // 'Users'
 
 					if (!$target) {
 						throw new Flourish\ProgrammerException(
@@ -348,7 +325,20 @@
 				$this->addMapping($path, $dest); // Set the path to our final destination
 			}
 
-			return $this->configuration->getMapping($target, $field);
+			$column = $this->configuration->getMapping($target, $field);
+
+			if (!$column) {
+
+			}
+
+			if ($map) {
+				$cpath = ($path ? '.' : NULL) . $field;
+				$alias = $this->getColumnAlias($cpath);
+
+				$this->addMapping($cpath, $alias);
+			}
+
+			return $this->map[$path ?: $this->repository] . '.' . $column;
 		}
 	}
 }
