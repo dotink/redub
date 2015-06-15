@@ -5,7 +5,7 @@
 		/**
 		 *
 		 */
-		public function __construct($alias, $config = array());
+		public function __construct($alias, array $config = array());
 
 
 		/**

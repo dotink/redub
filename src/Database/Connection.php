@@ -28,7 +28,7 @@
 		/**
 		 *
 		 */
-		public function __construct($alias, $config = array())
+		public function __construct($alias, array $config = array())
 		{
 			$this->alias  = $alias;
 			$this->config = $config;
@@ -102,7 +102,7 @@
 			if (!$key) {
 				return $this->config;
 
-			} elseif (isset($this->config[$key])) {
+			} elseif (array_key_exists($key, $this->config)) {
 				return $this->config[$key];
 
 			} elseif (func_num_args() == 2) {
