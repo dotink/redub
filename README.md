@@ -13,5 +13,4 @@ for rapid development.
 
 ## Documentation
 
-- [Database Abstraction Layer](./docs/dbal/Introduction.md)
-- [Object Relational Mapper](./docs/orm/Introduction.md)
+Please check [the Wiki](https://github.com/dotink/Redub/wiki) for the time being.
