@@ -25,7 +25,7 @@
 				'pgsql:host=%s;port=%s;dbname=%s',
 				$connection->getConfig('host', 'localhost'),
 				$connection->getConfig('port', 5432),
-				$connection->getConfig('dbname')
+				$connection->getConfig('name')
 			);
 		}
 	}

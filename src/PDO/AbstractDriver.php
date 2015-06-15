@@ -37,7 +37,7 @@
 		 */
 		public function connect(Database\ConnectionInterface $connection, $immediate = FALSE)
 		{
-			if (!$connection->getConfig('dbname')) {
+			if (!$connection->getConfig('name')) {
 				throw new Flourish\ProgrammerException(
 					'Cannot complete connection "%s", missing database name',
 					$connection->getAlias()

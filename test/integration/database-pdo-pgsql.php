@@ -10,7 +10,7 @@
 
 	$driver	    = new Database\PDO\Pgsql();
 	$connection = new Database\Connection('default', [
-		'dbname' => 'redub_test'
+		'name' => 'redub_test'
 	]);
 
 	$connection->setDriver($driver);

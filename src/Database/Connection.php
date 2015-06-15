@@ -50,7 +50,7 @@
 			if (!$this->setup()) {
 				throw new Flourish\ConnectivityException(
 					'Unable to connect to database "%s" on connection "%s"',
-					$this->getConfig('dbname'),
+					$this->getConfig('name'),
 					$this->alias
 				);
 			}

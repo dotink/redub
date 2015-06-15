@@ -19,7 +19,7 @@
 	$config->bind('mappers\sql',   $mapper);
 
 	$manager->connect($connection = new Redub\Database\Connection('default', [
-		'dbname' => 'redub_test'
+		'name' => 'redub_test'
 	]));
 
 	$connection->execute("CREATE TABLE teams(
