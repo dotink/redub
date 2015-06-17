@@ -71,20 +71,6 @@
 		protected $normalizedTables = array();
 
 
-		/**
-		 *
-		 */
-		static public function escapeIdentifier($name, $prepared = FALSE)
-		{
-			if ($prepared) {
-				// return $name;
-			}
-
-			$parts = explode('.', $name);
-			$parts = array_map(function($id) { return '"' . $id . '"'; }, $parts);
-
-			return implode('.', $parts);
-		}
 
 
 		/**

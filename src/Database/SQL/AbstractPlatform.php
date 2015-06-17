@@ -62,49 +62,43 @@
 
 
 		/**
-		 *
-		 */
-		protected $placeholderIndex = NULL;
-
-
-		/**
-		 * Compose an executable statement for a driver
+		 * Compile an executable statement for a driver
 		 *
 		 * @access public
-		 * @param Query $query The query to compose
+		 * @param Query $query The query to compile
 		 * @return mixed The executable statement for a driver using this platform
 		 */
-		public function compose(Database\Query $query, $placeholder = '$%d', $start = 1)
+		public function compile(Database\Query $query, Database\DriverInterface $driver)
 		{
-			if ($query->get()) {
-				return $query->get();
+			if ($query->isCompiled()) {
+				return $query->getStatement();
 			}
 
-			$this->placeholderIndex = $start;
+			$driver->reset();
 
 			switch ($action = $query->getAction()) {
 				case 'select':
-					return $this->composeSelect($query, $placeholder);
+					return $this->compileSelect($query, $driver);
 
 				case 'delete':
-					return $this->composeDelete($query, $placeholder);
+					return $this->compileDelete($query, $driver);
 
 				case 'update':
-					return $this->composeUpdate($query, $placeholder);
+					return $this->compileUpdate($query, $driver);
 
 				case 'insert':
-					return $this->composeInsert($query, $placeholder);
+					return $this->compileInsert($query, $driver);
 
 				default:
 
 					if (!isset(static::$extendedActions[$action])) {
 						throw new Flourish\ProgrammerException(
-							'Cannot compose query with unsupported action "%s"',
+							'Cannot compile query with unsupported action "%s"',
 							$action
 						);
 					}
 
-					return static::$extendedActions[$action]($query, $placeholder);
+					return static::$extendedActions[$action]($query, $driver);
 			}
 		}
 
@@ -130,25 +124,25 @@
 		/**
 		 *
 		 */
-		protected function composeColumns($query, $placeholder)
+		protected function compileColumns($query, $driver)
 		{
 			$columns = array();
 
 			foreach ($query->getArguments() as $key => $value) {
 				if (!is_string($value)) {
 					throw new Flourish\ProgrammerException(
-						'Cannot compose query with columns of non-string values'
+						'Cannot compile query with columns of non-string values'
 					);
 				}
 
 				if (is_int($key)) {
-					$columns[] = $this->escapeIdentifier($value);
+					$columns[] = $driver->escapeIdentifier($value);
 
 				} else {
 					$columns[] = sprintf(
 						'%s as %s',
-						$this->escapeIdentifier($key),
-						$this->escapeIdentifier($value)
+						$driver->escapeIdentifier($key),
+						$driver->escapeIdentifier($value)
 					);
 				}
 			}
@@ -160,7 +154,7 @@
 		/**
 		 *
 		 */
-		protected function composeCriteria($query, $placeholder, $criteria = NULL)
+		protected function compileCriteria($query, $driver, $criteria = NULL)
 		{
 			$conditions = '';
 
@@ -179,14 +173,14 @@
 					}
 
 					if (in_array($condition[1], ['and', 'or'])) {
-						$conditions .= sprintf('(%s)', $this->composeCriteria(
+						$conditions .= sprintf('(%s)', $this->compileCriteria(
 							$query,
-							$placeholder,
+							$driver,
 							$condition
 						));
 
 					} elseif (isset(static::$supportedOperators[$condition[1]])) {
-						$conditions .= $this->makeCondition($query, $placeholder, $condition);
+						$conditions .= $this->makeCondition($query, $driver, $condition);
 
 					} else {
 						throw new Flourish\ProgrammerException(
@@ -216,7 +210,7 @@
 		/**
 		 *
 		 */
-		protected function composeJoins($query, $placeholder)
+		protected function compileJoins($query, $driver)
 		{
 			$links = $query->getLinks();
 			$joins = '';
@@ -237,12 +231,12 @@
 				}
 
 				foreach ($criteria as $condition) {
-					$parts[] = $this->makeCondition($query, $placeholder, $condition);
+					$parts[] = $this->makeCondition($query, $driver, $condition);
 				}
 
 				$joins .= sprintf(' JOIN %s %s ON (%s)',
-					$this->escapeIdentifier($join_table),
-					$this->escapeIdentifier($alias),
+					$driver->escapeIdentifier($join_table),
+					$driver->escapeIdentifier($alias),
 					implode(' AND ', $parts)
 				);
 			}
@@ -254,11 +248,11 @@
 		/**
 		 *
 		 * @access protected
-		 * @param Query $query The query from which to compose the WHERE clause
-		 * @param string $placeholder The placeholder to use for prepared statements
+		 * @param Query $query The query from which to compile the WHERE clause
+		 * @param string $driver The placeholder to use for prepared statements
 		 * @return string
 		 */
-		protected function composeLimit($query, $placeholder)
+		protected function compileLimit($query, $driver)
 		{
 			$limit = $query->getLimit();
 
@@ -267,23 +261,23 @@
 
 			} elseif (!is_int($limit) || $limit < 0) {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose query with non-integer or negative LIMIT clause'
+					'Cannot compile query with non-integer or negative LIMIT clause'
 				);
 
 			}
 
-			return sprintf('LIMIT %s', $this->makePlaceholder($query, $placeholder, $limit));
+			return sprintf('LIMIT %s', $this->makeValue($query, $driver, $limit));
 		}
 
 
 		/**
 		 *
 		 * @access protected
-		 * @param Query $query The query from which to compose the WHERE clause
-		 * @param string $placeholder The placeholder to use for prepared statements
+		 * @param Query $query The query from which to compile the WHERE clause
+		 * @param string $driver The placeholder to use for prepared statements
 		 * @return string
 		 */
-		protected function composeOffset($query, $placeholder)
+		protected function compileOffset($query, $driver)
 		{
 			$offset = $query->getOffset();
 
@@ -292,18 +286,18 @@
 
 			} elseif (!is_int($offset) || $offset < 0) {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose query with non-integer or negative OFFSET clause'
+					'Cannot compile query with non-integer or negative OFFSET clause'
 				);
 
 			}
 
-			return sprintf('OFFSET %s', $this->makePlaceholder($query, $placeholder, $offset));
+			return sprintf('OFFSET %s', $this->makeValue($query, $driver, $offset));
 		}
 
 		/**
 		 *
 		 */
-		protected function composeDeleteFrom($query, $placeholder)
+		protected function compileDeleteFrom($query, $driver)
 		{
 			//
 			// TODO: Implement the simplified FROM
@@ -315,53 +309,53 @@
 		/**
 		 *
 		 */
-		protected function composeSelectFrom($query, $placeholder)
+		protected function compileSelectFrom($query, $driver)
 		{
 			$repository = $query->getRepository();
 
 			if (!is_array($repository)) {
-				$table = $this->escapeIdentifier($repository);
+				$table = $driver->escapeIdentifier($repository);
 
 			} elseif (!is_numeric(key($repository))) {
 				$table = $this->makeTableWithAlias(
 					$query,
-					$placeholder,
+					$driver,
 					key($repository),
 					current($repository)
 				);
 
 			} else {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose tables in FROM clause with malformed repository value',
+					'Cannot compile tables in FROM clause with malformed repository value',
 					$repository
 				);
 			}
 
-			return sprintf('FROM %s %s', $table, $this->composeJoins($query, $placeholder));
+			return sprintf('FROM %s %s', $table, $this->compileJoins($query, $driver));
 		}
 
 		/**
 		 *
 		 *
 		 * @access protected
-		 * @param Query $query The query from which to compose the WHERE clause
-		 * @param string $placeholder The placeholder to use for prepared statements
+		 * @param Query $query The query from which to compile the WHERE clause
+		 * @param string $driver The placeholder to use for prepared statements
 		 * @return string
 		 */
-		protected function composeFrom($query, $placeholder)
+		protected function compileFrom($query, $driver)
 		{
 			$action = $query->getAction();
 
 			switch ($action) {
 				case 'select':
-					return $this->composeSelectFrom($query, $placeholder);
+					return $this->compileSelectFrom($query, $driver);
 
 				case 'delete':
-					return $this->composeDeleteFrom($query, $placeholder);
+					return $this->compileDeleteFrom($query, $driver);
 
 				default:
 					throw new Flourish\ProgrammerException(
-						'Cannot compose FROM clause on unsupported action "%s"',
+						'Cannot compile FROM clause on unsupported action "%s"',
 						$action
 					);
 			}
@@ -369,38 +363,38 @@
 
 
 		/**
-		 * Composes a query that is performing a select
+		 * Compiles a query that is performing a select
 		 *
 		 * @access protected
-		 * @param Query $query The query from which to compose the WHERE clause
-		 * @param string $placeholder The placeholder to use for prepared statements
+		 * @param Query $query The query from which to compile the WHERE clause
+		 * @param string $driver The placeholder to use for prepared statements
 		 * @return string
 		 */
-		protected function composeSelect($query, $placeholder)
+		protected function compileSelect($query, $driver)
 		{
 			return trim(sprintf(
 				'SELECT %s %s %s %s %s',
-				$this->composeColumns ($query, $placeholder),
-				$this->composeFrom    ($query, $placeholder),
-				$this->composeWhere   ($query, $placeholder),
-				$this->composeLimit   ($query, $placeholder),
-				$this->composeOffset  ($query, $placeholder)
+				$this->compileColumns ($query, $driver),
+				$this->compileFrom    ($query, $driver),
+				$this->compileWhere   ($query, $driver),
+				$this->compileLimit   ($query, $driver),
+				$this->compileOffset  ($query, $driver)
 			));
 		}
 
 
 		/**
-		 * Composes an SQL WHERE clause if it is needed by the query
+		 * Compiles an SQL WHERE clause if it is needed by the query
 		 *
 		 * @access protected
-		 * @param Query $query The query from which to compose the WHERE clause
-		 * @param string $placeholder The placeholder to use for prepared statements
+		 * @param Query $query The query from which to compile the WHERE clause
+		 * @param string $driver The placeholder to use for prepared statements
 		 * @return string The SQL WHERE clause
 		 */
-		protected function composeWhere($query, $placeholder)
+		protected function compileWhere($query, $driver)
 		{
 			return count($query->getCriteria())
-				? sprintf('WHERE %s', $this->composeCriteria($query, $placeholder))
+				? sprintf('WHERE %s', $this->compileCriteria($query, $driver))
 				: NULL;
 		}
 
@@ -408,33 +402,37 @@
 		/**
 		 *
 		 */
-		protected function makeCondition($query, $placeholder, $condition)
+		protected function makeCondition($query, $driver, $condition)
 		{
-			list($condition, $operator, $value) = $condition;
+			list($field, $operator, $value) = $condition;
 
 			if (!isset(self::$supportedOperators[$operator])) {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose query with operator "%s", unsupported by this platform',
+					'Cannot compile query with operator "%s", unsupported by this platform',
 					$operator
 				);
 			}
 
-			$identifier = $this->escapeIdentifier($condition);
-			$operator   = $this->makeOperator($query, $placeholder, $operator, $value);
-			$condition  = sprintf('%s %s', $identifier, $operator);
+			$identifier = $driver->escapeIdentifier($field);
 
-			if (strpos($operator, '!') !== FALSE) {
-				if ($value === NULL) {
-					$condition = sprintf('%s IS NOT %s', $identifier, $operator);
+			if ($value === NULL) {
+				$value = $driver->escapeValue($value, $query);
 
+				if ($operator == '!=') {
+					$condition = sprintf('%s IS NOT %s', $identifier, $value);
+				} elseif ($operator == '==') {
+					$condition = sprintf('%s IS %s', $identifier, $value);
 				} else {
-					$condition = $value
-						? sprintf('(%s OR %s IS NULL)', $condition, $identifier)
-						: sprintf('(%s OR %s IS NOT NULL)', $condition, $identifier);
+					// TODO: Implement other NULL cases
 				}
 
-			} elseif ($operator == '==' && $value === NULL) {
-				$condition = sprintf('%s IS %s', $identifier, $operator);
+			} else {
+				$operator  = $this->makeOperator($query, $driver, $operator, $value);
+				$condition = sprintf('%s %s', $identifier, $operator);
+
+				if (strpos($operator, '!') !== FALSE) {
+					$condition = sprintf('(%s OR %s IS NULL)', $condition, $identifier);
+				}
 			}
 
 			return $condition;
@@ -447,19 +445,19 @@
 		 *
 		 *
 		 */
-		protected function makeOperator($query, $placeholder, $operator, $value)
+		protected function makeOperator($query, $driver, $operator, $value)
 		{
 			$operator = trim($operator);
 
 			if (!isset(static::$supportedOperators[$operator])) {
 				throw new Flourish\ProgrammerException(
-					'Cannot compose query with unsupported operator "%s"',
+					'Cannot compile query with unsupported operator "%s"',
 					$operator
 				);
 			}
 
 			if ($operator[1] == ':') {
-				$value = $this->escapeIdentifier($value);
+				$value = $driver->escapeIdentifier($value);
 
 			} else {
 				if (is_array($value)) {
@@ -482,7 +480,7 @@
 					}
 				}
 
-				$value = $this->makePlaceholder($query, $placeholder, $value);
+				$value = $this->makeValue($query, $driver, $value);
 			}
 
 			return sprintf(static::$supportedOperators[$operator], $value);
@@ -492,12 +490,12 @@
 		/**
 		 *
 		 */
-		public function makeTableWithAlias($query, $placeholder, $key, $value)
+		public function makeTableWithAlias($query, $driver, $key, $value)
 		{
 			return sprintf(
 				'%s %s',
-				$this->escapeIdentifier($key),
-				$this->escapeIdentifier($value)
+				$driver->escapeIdentifier($key),
+				$driver->escapeIdentifier($value)
 			);
 		}
 
@@ -506,21 +504,17 @@
 		 * Makes a placeholder for a prepared query
 		 *
 		 * @access protected
-		 * @param string $placeholder The placeholder to compose with, %d is replaced by index
+		 * @param string $driver The placeholder to compile with, %d is replaced by index
 		 * @return string
 		 */
-		protected function makePlaceholder($query, $placeholder, $value)
+		protected function makeValue($query, $driver, $value)
 		{
 			settype($value, 'array');
 
 			$params = array();
 
 			foreach ($value as $param) {
-				$params[] = sprintf($placeholder, $this->placeholderIndex);
-
-				$query->using($param, $this->placeholderIndex);
-
-				$this->placeholderIndex++;
+				$params[] = $driver->escapeValue($param, $query);
 			}
 
 			return implode(', ', $params);

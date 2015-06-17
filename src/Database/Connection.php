@@ -63,7 +63,7 @@
 		 * @access public
 		 * @var mixed $executable An executable operation
 		 * @var array $params The parameters to pass to the executable or those for the Query
-		 * @return Database\ResultInterface The data results
+		 * @return ResultInterface The data results
 		 */
 		public function execute($executable, ...$params)
 		{
@@ -208,7 +208,7 @@
 		 * Get the list of *-to-many routes for a given repository
 		 *
 		 * Unique relationships represent one-to-many relationships and are to be understood as
-		 * entity X has many unique Ys.
+		 * entity X has many unique Ys.  Non-unique relationships would be many-to-many.
 		 *
 		 * @access public
 		 * @param string $repository The name of the repository on which to get the routes
@@ -225,7 +225,7 @@
 		 * Get the list of *-to-one routes for a given repository
 		 *
 		 * Unique relationships represent one-to-one relationships and are to be understood as
-		 * entity X has one unique Y.
+		 * entity X has one unique Y.  Non-unique relationships would be many-to-one.
 		 *
 		 * @access public
 		 * @param string $repository The name of the repository on which to get the routes
@@ -265,6 +265,10 @@
 
 		/**
 		 * Determine whether or not a field on a given repository is auto generated
+		 *
+		 * This usually maps to something like AUTO_INCREMENT in mysql or SERIAL columns and
+		 * integers with sequences in postgres.  For something like mongo it would probably only
+		 * ever return TRUE on `_id`.
 		 *
 		 * @access public
 		 * @param string $repository The name of the repository on which to check the field
@@ -357,13 +361,29 @@
 		 * @param array $params The parameters for the query
 		 * @return Query The resolved query
 		 */
-		protected function resolveStringType($executable, ...$params)
+		protected function resolveStringType($executable, $params = array())
 		{
-			$token  = sprintf($this->driver->getPlaceholder(), '$1');
-			$string = preg_replace('#\{\{(\d+)\}\}#', $token, (string) $executable);
-			$query  = new Query($string, ...$params);
+			$this->driver->reset();
 
-			return $query;
+			$query     = new Query();
+			$statement = preg_replace_callback(
+				'#\{\{(\d+)\}\}#',
+				function($matches) use ($params, $query) {
+					$index = $matches[1];
+
+					if (!isset($params[$index])) {
+						throw new Flourish\ProgrammerException(
+							'Missing parameter %s for query, not available in parameters',
+							$index
+						);
+					}
+
+					return $this->driver->escapeValue($params[$index], $query);
+				},
+				(string) $executable
+			);
+
+			return $query->bindStatement($statement);
 		}
 
 

@@ -3,20 +3,25 @@
 	/**
 	 * The most basic platform interface
 	 *
-	 * Platforms are responsible for parsing and composing query strings and objects, respectively.
-	 * They should allow a compiled query to be parsed back into an object structure or allow an
-	 * object structure to be composed back to a suitable statement for execution.
+	 * Platforms are responsible all platform specific transformations and information gathering.
+	 * They can compile/parse queries and act to provide the connection with the results needed
+	 * to abstract schema reflection.
+	 *
+	 * @copyright Copyright (c) 2015 Matthew J. Sahagian, others
+	 * @author Matthew J. Sahagian [mjs] <msahagian@dotink.org>
+	 *
+	 * @license Please reference the LICENSE.md file at the root of this distribution
 	 */
 	interface PlatformInterface
 	{
 		/**
-		 * Compose an executable statement for a driver
+		 * Compile a query into an executable statement
 		 *
 		 * @access public
-		 * @param Query $query The query to compose
+		 * @param Query $query The query to compile
 		 * @return mixed The executable statement for a driver using this platform
 		 */
-		public function compose(Query $query);
+		public function compile(Query $query, DriverInterface $driver);
 
 
 		/**
@@ -29,5 +34,10 @@
 		 * @return Query The parsed and populated query object
 		 */
 		public function parse(Query $query);
+
+
+		//
+		// TODO: Add all the public facing resolveXXX() methods
+		//
 	}
 }

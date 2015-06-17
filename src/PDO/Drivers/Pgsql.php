@@ -28,5 +28,17 @@
 				$connection->getConfig('name')
 			);
 		}
+
+
+		/**
+		 *
+		 */
+		public function escapeIdentifier($name)
+		{
+			$parts = explode('.', $name);
+			$parts = array_map(function($id) { return '"' . $id . '"'; }, $parts);
+
+			return implode('.', $parts);
+		}
 	}
 }

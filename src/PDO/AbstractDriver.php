@@ -10,6 +10,9 @@
 		const DEFAULT_USER      = NULL;
 		const PLACEHOLDER_START = 1;
 
+
+		protected $position = NULL;
+
 		/**
 		 * Creates a DSN from the connection
 		 *
@@ -96,6 +99,17 @@
 		/**
 		 *
 		 */
+		public function escapeValue($value, Database\Query $query)
+		{
+			$query->using($value, $this->position++);
+
+			return '?';
+		}
+
+
+		/**
+		 *
+		 */
 		public function fail($handle, $response, $message)
 		{
 			$error_info = $handle->errorInfo();
@@ -115,18 +129,27 @@
 		 */
 		public function prepare($handle, Database\Query $query)
 		{
-			$statement = $this->getPlatform()->compose($query, '?', static::PLACEHOLDER_START);
-			$statement = $handle->prepare($statement);
+			$sql_statement = $this->getPlatform()->compile($query, $this);
+			$pdo_statement = $handle->prepare($sql_statement);
 
 			foreach ($query->getParams() as $index => $value) {
 				if ($value === NULL) {
-					$statement->bindValue($index, $value, PDO::PARAM_NULL);
+					$pdo_statement->bindValue($index, $value, PDO::PARAM_NULL);
 				} else {
-					$statement->bindValue($index, $value);
+					$pdo_statement->bindValue($index, $value);
 				}
 			}
 
-			return $statement;
+			return $pdo_statement;
+		}
+
+
+		/**
+		 *
+		 */
+		public function reset()
+		{
+			$this->position = static::PLACEHOLDER_START;
 		}
 
 

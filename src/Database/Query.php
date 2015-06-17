@@ -3,7 +3,12 @@
 	use Dotink\Flourish;
 
 	/**
+	 * An object encapsulation of query information, arguments, parameters, etc.
 	 *
+	 * @copyright Copyright (c) 2015 Matthew J. Sahagian, others
+	 * @author Matthew J. Sahagian [mjs] <msahagian@dotink.org>
+	 *
+	 * @license Please reference the LICENSE.md file at the root of this distribution
 	 */
 	class Query extends Criteria
 	{
@@ -67,7 +72,10 @@
 		public function __construct($statement = NULL, array $params = array())
 		{
 			$this->statement = $statement;
-			$this->params    = $params;
+
+			if (func_num_args() >= 2) {
+				$this->params = $params;
+			}
 		}
 
 
@@ -77,25 +85,18 @@
 		public function __clone()
 		{
 			$this->statement = NULL;
-			$this->params = array();
+			$this->params    = array();
 		}
 
 
 		/**
 		 *
 		 */
-		public function __toString()
+		public function bindStatement($statement)
 		{
-			return $this->get();
-		}
+			$this->statement = $statement;
 
-
-		/**
-		 *
-		 */
-		public function get()
-		{
-			return $this->statement;
+			return $this;
 		}
 
 
@@ -114,15 +115,6 @@
 		public function getArguments()
 		{
 			return $this->arguments;
-		}
-
-
-		/**
-		 *
-		 */
-		public function getRepository()
-		{
-			return $this->repository;
 		}
 
 
@@ -178,9 +170,36 @@
 		/**
 		 *
 		 */
+		public function getRepository()
+		{
+			return $this->repository;
+		}
+
+
+		/**
+		 *
+		 */
+		public function getStatement()
+		{
+			return $this->statement;
+		}
+
+
+		/**
+		 *
+		 */
+		public function isCompiled()
+		{
+			return $this->statement !== NULL;
+		}
+
+
+		/**
+		 *
+		 */
 		public function link($repository, array $conditions)
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			$alias    = FALSE;
 			$criteria = array();
@@ -213,7 +232,7 @@
 		 */
 		public function limit($count)
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			$this->limit = $count;
 
@@ -226,7 +245,7 @@
 		 */
 		public function on($repository, array $links = array())
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			$this->repository = $repository;
 
@@ -245,7 +264,7 @@
 		 */
 		public function perform($action, array $args = array())
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			$this->action = $action;
 
@@ -262,7 +281,7 @@
 		 */
 		public function skip($offset)
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			$this->offset = $offset;
 
@@ -275,7 +294,15 @@
 		 */
 		public function using($params, $placeholderIndex = NULL)
 		{
+			!$this->isCompiled() ?: $this->reject();
+
 			if ($placeholderIndex == NULL) {
+				if (!is_array($params)) {
+					throw new Flourish\ProgrammerException(
+						'If no placeholder index is specified, parameters must be an array'
+					);
+				}
+
 				$this->params = $params;
 
 			} else {
@@ -291,7 +318,7 @@
 		 */
 		public function where($conditions, $preformatted = FALSE)
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			if ($preformatted) {
 				$this->criteria = $conditions;
@@ -329,7 +356,7 @@
 		 */
 		public function with(array $arguments = array())
 		{
-			$this->reset();
+			!$this->isCompiled() ?: $this->reject();
 
 			$this->arguments = $arguments;
 
@@ -365,6 +392,15 @@
 			}
 
 			return $criteria;
+		}
+
+
+		/**
+		 *
+		 */
+		protected function reject($msg = 'Cannot modify query, already compiled')
+		{
+			throw new Flourish\ProgrammerException($msg);
 		}
 
 
@@ -407,15 +443,6 @@
 			}
 
 			return $criteria;
-		}
-
-
-		/**
-		 *
-		 */
-		protected function reset()
-		{
-			$this->statement = NULL;
 		}
 	}
 }

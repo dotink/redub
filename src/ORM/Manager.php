@@ -143,11 +143,12 @@
 				);
 			}
 
-			$driver->connect($connection);
 			$this->register($connection, isset($connections[$alias]['namespaces'])
 				? $connections[$alias]['namespaces']
 				: ['*']
 			);
+
+			$driver->connect($connection);
 		}
 
 

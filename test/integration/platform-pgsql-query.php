@@ -86,7 +86,7 @@
 		])
 		-> on('people');
 
-	echo $driver->getPlatform()->compose($query) . PHP_EOL;
+	echo $driver->getPlatform()->compile($query, $driver) . PHP_EOL;
 
 	//
 	// Full Identifiers
@@ -98,7 +98,7 @@
 		])
 		-> on('people');
 
-	echo $driver->getPlatform()->compose($query) . PHP_EOL;
+	echo $driver->getPlatform()->compile($query, $driver) . PHP_EOL;
 
 	//
 	// Criteria
@@ -127,6 +127,8 @@
 			'all' => [
 				'p.first_name ==' => 'Matthew',
 				'p.last_name =='  => 'Sahagian',
+				'p.last_name !='  => 'Bob',
+				'p.age !=' => NULL,
 				[
 					'any' => [
 						'p.owner =='  => TRUE,
@@ -136,7 +138,7 @@
 			]
 		]);
 
-	echo $driver->getPlatform()->compose($query) . PHP_EOL;
+	echo $driver->getPlatform()->compile($query, $driver) . PHP_EOL;
 
 
 	//
@@ -155,7 +157,7 @@
 		]);
 
 
-	echo $driver->getPlatform()->compose($query) . PHP_EOL;
+	echo $driver->getPlatform()->compile($query, $driver) . PHP_EOL;
 
 	var_dump($connection->execute($query)->get(0));
 
