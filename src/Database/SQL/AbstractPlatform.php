@@ -22,23 +22,24 @@
 		 *
 		 */
 		static protected $supportedOperators = [
-			'=:' => '= %s',
-			'!:' => '!= %s',
-			'>:' => '> %s',
-			'<:' => '< %s',
-			'==' => '= %s',
-			'!=' => '!= %s',
-			'~~' => 'LIKE %s',
-			'~=' => 'LIKE %s',
-			'=~' => 'LIKE %s',
-			'!!' => 'NOT LIKE %s',
-			'~!' => 'NOT LIKE %s',
-			'!~' => 'NOT LIKE %s',
-			'<-' => '< %s',
-			'>-' => '> %s',
-			'<=' => '<= %s',
-			'>=' => '>= %s',
-			'IN' => 'IN(%s)'
+			'=:'     => '= %s',
+			'!:'     => '!= %s',
+			'>:'     => '> %s',
+			'<:'     => '< %s',
+			'=='     => '= %s',
+			'!='     => '!= %s',
+			'~~'     => 'LIKE %s',
+			'~='     => 'LIKE %s',
+			'=~'     => 'LIKE %s',
+			'!!'     => 'NOT LIKE %s',
+			'~!'     => 'NOT LIKE %s',
+			'!~'     => 'NOT LIKE %s',
+			'<-'     => '< %s',
+			'>-'     => '> %s',
+			'<='     => '<= %s',
+			'>='     => '>= %s',
+			'IN'     => 'IN(%s)',
+			'NOT IN' => 'NOT IN(%s)'
 		];
 
 
@@ -418,11 +419,25 @@
 				);
 			}
 
-			return sprintf(
-				'%s %s',
-				$this->escapeIdentifier($condition),
-				$this->makeOperator($query, $placeholder, $operator, $value)
-			);
+			$identifier = $this->escapeIdentifier($condition);
+			$operator   = $this->makeOperator($query, $placeholder, $operator, $value);
+			$condition  = sprintf('%s %s', $identifier, $operator);
+
+			if (strpos($operator, '!') !== FALSE) {
+				if ($value === NULL) {
+					$condition = sprintf('%s IS NOT %s', $identifier, $operator);
+
+				} else {
+					$condition = $value
+						? sprintf('(%s OR %s IS NULL)', $condition, $identifier)
+						: sprintf('(%s OR %s IS NOT NULL)', $condition, $identifier);
+				}
+
+			} elseif ($operator == '==' && $value === NULL) {
+				$condition = sprintf('%s IS %s', $identifier, $operator);
+			}
+
+			return $condition;
 		}
 
 
@@ -450,13 +465,21 @@
 				if (is_array($value)) {
 					if ($operator == '==') {
 						$operator = 'IN';
+					} elseif ($operator == '!=') {
+						$operator = 'NOT IN';
+
 					} else {
-						throw new Flourish\ProgrammerException();
+						throw new Flourish\ProgrammerException(
+							'Invalid operator "%s" for use with array value, must be == or !=',
+							$operator
+						);
 					}
 
-				} elseif (strpos($operator, '~') !== FALSE) {
-					$value = $operator[0] == '~' ? (static::WILDCARD . $value) : $value;
-					$value = $operator[1] == '~' ? ($value . static::WILDCARD) : $value;
+				} else {
+					if (strpos($operator, '~') !== FALSE) {
+						$value = $operator[0] == '~' ? (static::WILDCARD . $value) : $value;
+						$value = $operator[1] == '~' ? ($value . static::WILDCARD) : $value;
+					}
 				}
 
 				$value = $this->makePlaceholder($query, $placeholder, $value);

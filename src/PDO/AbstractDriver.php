@@ -119,7 +119,11 @@
 			$statement = $handle->prepare($statement);
 
 			foreach ($query->getParams() as $index => $value) {
-				$statement->bindValue($index, $value);
+				if ($value === NULL) {
+					$statement->bindValue($index, $value, PDO::PARAM_NULL);
+				} else {
+					$statement->bindValue($index, $value);
+				}
 			}
 
 			return $statement;
