@@ -31,8 +31,20 @@
 		PRIMARY KEY (person, number)
 	)");
 
+	$connection->execute("CREATE TABLE groups(
+		id SERIAL PRIMARY KEY,
+		name VARCHAR NOT NULL
+	)");
+
+	$connection->execute("CREATE TABLE person_groups(
+		person INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE ON UPDATE CASCADE,
+		\"group\" INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+		PRIMARY KEY (person, \"group\")
+	)");
 
 	register_shutdown_function(function() use ($connection) {
+		$connection->execute("DROP TABLE person_groups");
+		$connection->execute("DROP TABLE groups");
 		$connection->execute("DROP TABLE phone_numbers");
 		$connection->execute("DROP TABLE people");
 	});
@@ -47,9 +59,13 @@
 		print_r($connection->getFields($table));
 		print_r($connection->getUniqueIndexes($table));
 		print_r($connection->getIdentity($table));
+		echo 'hasManyUnique' . PHP_EOL;
 		print_r($connection->getRoutesToMany($table, TRUE));
+		echo 'hasMany' . PHP_EOL;
 		print_r($connection->getRoutesToMany($table));
+		echo 'hasOneUnique' . PHP_EOL;
 		print_r($connection->getRoutesToOne($table, TRUE));
+		echo 'hasOne' . PHP_EOL;
 		print_r($connection->getRoutesToOne($table));
 
 		foreach ($connection->getFields($table) as $field) {
