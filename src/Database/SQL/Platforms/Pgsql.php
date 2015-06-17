@@ -1,5 +1,7 @@
 <?php namespace Redub\Database\SQL
 {
+	use Dotink\Flourish;
+
 	/**
 	 *
 	 */
@@ -38,7 +40,7 @@
 			'bytea'				=> 'binary'
 		];
 
-		protected $columnInfo = array();
+		protected $columns = array();
 
 		protected $keys = array();
 
@@ -66,7 +68,7 @@
 		 */
 		public function resolveFields($connection, $table)
 		{
-			return array_keys($this->resolveTableColumnInfo($connection, $table));
+			return array_keys($this->resolveColumns($connection, $table));
 		}
 
 
@@ -75,7 +77,7 @@
 		 */
 		public function resolveFieldInfo($connection, $table, $field, $type)
 		{
-			$info  = $this->resolveTableColumnInfo($connection, $table);
+			$info  = $this->resolveColumns($connection, $table);
 			$alias = $connection->getAlias();
 
 			if (!isset($info[$field])) {
@@ -199,19 +201,12 @@
 				$table = static::DEFAULT_SCHEMA . '.' . $table;
 			}
 
-			if (isset($this->keys[$alias])) {
-				if (isset($this->keys[$alias][$table])) {
-					return $this->keys[$alias][$table];
-				}
-
-				throw new Flourish\ProgrammerException(
-					'Failed to get key or index or key information for table "%s" on "%s"',
-					$table,
-					$alias
-				);
+			if (isset($this->keys[$alias][$table])) {
+				return $this->keys[$alias][$table];
 
 			} else {
-				$this->keys[$alias] = array();
+				$this->keys[$alias]         = array();
+				$this->keys[$alias][$table] = array();
 			}
 
 			$keys = array();
@@ -399,19 +394,12 @@
 		{
 			$alias  = $connection->getAlias();
 
-			if (isset($this->routes[$alias])) {
-				if (isset($this->routes[$alias][$table])) {
-					return $this->routes[$alias][$table];
-				}
-
-				throw new Flourish\ProgrammerException(
-					'Failed to get route information for table "%s" on "%s"',
-					$table,
-					$alias
-				);
+			if (isset($this->routes[$alias][$table])) {
+				return $this->routes[$alias][$table];
 
 			} else {
-				$this->routes[$alias] = array();
+				$this->routes[$alias]         = array();
+				$this->routes[$alias][$table] = array();
 			}
 
 			$keys   = $this->resolveKeysAndIndexes($connection, $table);
@@ -437,7 +425,7 @@
 		/**
 		 *
 		 */
-		protected function resolveTableColumnInfo($connection, $table)
+		protected function resolveColumns($connection, $table)
 		{
 			$alias  = $connection->getAlias();
 			$schema = static::DEFAULT_SCHEMA;
@@ -446,24 +434,15 @@
 				list ($schema, $table) = explode('.', $table);
 			}
 
-			if (isset($this->columnInfo[$alias])) {
-				$table = $schema . '.' . $table;
-
-				if (isset($this->columnInfo[$alias][$table])) {
-					return $this->columnInfo[$alias][$table];
-				}
-
-				throw new Flourish\ProgrammerException(
-					'Failed to get column information for table "%s" on "%s"',
-					$table,
-					$alias
-				);
+			if (isset($this->columns[$alias][$table])) {
+				return $this->columns[$alias][$table];
 
 			} else {
-				$this->columnInfo[$alias] = array();
+				$this->columns[$alias]         = array();
+				$this->columns[$alias][$table] = array();
 			}
 
-			$column_info    = array();
+			$columns        = array();
 			$max_min_values = [
 				'smallint'  => ['min' => -32768,               'max' => 32767],
 				'int'       => ['min' => -2147483648,          'max' => 2147483647],
@@ -592,16 +571,16 @@
 					}
 				}
 
-				$info['comment']      = $row['comment'];
-				$info['nullable']     = $row['not_null'] != 't';
-				$column_info[$column] = $info;
+				$info['comment']  = $row['comment'];
+				$info['nullable'] = $row['not_null'] != 't';
+				$columns[$column] = $info;
 			}
 
-			print_r($column_info);
+			print_r($columns);
 
-			$this->columnInfo[$alias][$schema . '.' . $table] = $column_info;
+			$this->columns[$alias][$schema . '.' . $table] = $columns;
 
-			return $this->resolveTableColumnInfo($connection, $table);
+			return $this->resolveColumns($connection, $table);
 		}
 	}
 }

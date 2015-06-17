@@ -24,7 +24,16 @@
 		age INT
 	)");
 
+	$connection->execute("CREATE TABLE phone_numbers(
+		person INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE ON UPDATE CASCADE,
+		number VARCHAR NOT NULL,
+		description VARCHAR,
+		PRIMARY KEY (person, number)
+	)");
+
+
 	register_shutdown_function(function() use ($connection) {
+		$connection->execute("DROP TABLE phone_numbers");
 		$connection->execute("DROP TABLE people");
 	});
 
