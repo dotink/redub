@@ -9,7 +9,7 @@
 		const PLATFORM_NAME   = 'Pgsql';
 		const REGEX_DATA_TYPE = '#([\w ]+)\s*(?:\(\s*(\d+)(?:\s*,\s*(\d+))?\s*\))?#';
 
-		static protected $dataTypes = [
+		static protected $incomingDataTypes = [
 			'boolean'			=> 'boolean',
 			'smallint'			=> 'integer',
 			'int'				=> 'integer',
@@ -38,18 +38,11 @@
 			'bytea'				=> 'binary'
 		];
 
-		/**
-		 * Quotes a string.  This does not do any additional escaping of existing quotes
-		 *
-		 * @static
-		 * @access protected
-		 * @param string $string The string to quote
-		 * @return string The quoted string
-		 */
-		static protected function quote($string)
-		{
-			return '"' . $string . '"';
-		}
+		protected $columnInfo = array();
+
+		protected $keys = array();
+
+		protected $routes = array();
 
 
 		/**
@@ -62,7 +55,7 @@
 			}
 
 			$parts = explode('.', $name);
-			$parts = array_map([__CLASS__, 'quote'], $parts);
+			$parts = array_map(function($id) { return '"' . $id . '"'; }, $parts);
 
 			return implode('.', $parts);
 		}
@@ -111,6 +104,17 @@
 
 
 		/**
+		 *
+		 */
+		public function resolveIdentity($connection, $table)
+		{
+			$keys = $this->resolveKeysAndIndexes($connection, $table);
+
+			return $keys['primary'];
+		}
+
+
+		/**
 		 * Resolves a list of repositories for the connection
 		 */
 		public function resolveRepositories($connection)
@@ -150,23 +154,316 @@
 		/**
 		 *
 		 */
+		public function resolveUniqueIndexes($connection, $table)
+		{
+			$keys = $this->resolveKeysAndIndexes($connection, $table);
+
+			return $keys['unique'];
+		}
+
+
+		/**
+		 *
+		 */
+		public function resolveRoutesToMany($connection, $table, $unique)
+		{
+			$routes = $this->resolveRoutes($connection, $table);
+
+			return $unique
+				? $routes['hasManyUnique']
+				: $routes['hasMany'];
+		}
+
+
+		/**
+		 *
+		 */
+		public function resolveRoutesToOne($connection, $table, $unique)
+		{
+			$routes = $this->resolveRoutes($connection, $table);
+
+			return $unique
+				? $routes['hasOneUnique']
+				: $routes['hasOne'];
+		}
+
+
+		/**
+		 *
+		 */
+		protected function resolveKeysAndIndexes($connection, $table)
+		{
+			$alias = $connection->getAlias();
+
+			if (strpos($table, '.') === FALSE) {
+				$table = static::DEFAULT_SCHEMA . '.' . $table;
+			}
+
+			if (isset($this->keys[$alias])) {
+				if (isset($this->keys[$alias][$table])) {
+					return $this->keys[$alias][$table];
+				}
+
+				throw new Flourish\ProgrammerException(
+					'Failed to get key or index or key information for table "%s" on "%s"',
+					$table,
+					$alias
+				);
+
+			} else {
+				$this->keys[$alias] = array();
+			}
+
+			$keys = array();
+
+			foreach ($this->resolveRepositories($connection) as $repository) {
+				if (strpos($repository, '.') === FALSE) {
+					$repository = static::DEFAULT_SCHEMA . '.' . $repository;
+				}
+
+				$keys[$repository]            = array();
+				$keys[$repository]['primary'] = array();
+				$keys[$repository]['unique']  = array();
+				$keys[$repository]['foreign'] = array();
+			}
+
+			$result = $connection->execute(
+				"(SELECT
+					LOWER(s.nspname) AS \"schema\",
+					LOWER(t.relname) AS \"table\",
+					con.conname AS constraint_name,
+					CASE con.contype
+						WHEN 'f' THEN 'foreign'
+						WHEN 'p' THEN 'primary'
+						WHEN 'u' THEN 'unique'
+					END AS type,
+					LOWER(col.attname) AS column,
+					LOWER(fs.nspname) AS foreign_schema,
+					LOWER(ft.relname) AS foreign_table,
+					LOWER(fc.attname) AS foreign_column,
+					CASE con.confdeltype
+						WHEN 'c' THEN 'cascade'
+						WHEN 'a' THEN 'no_action'
+						WHEN 'r' THEN 'restrict'
+						WHEN 'n' THEN 'set_null'
+						WHEN 'd' THEN 'set_default'
+					END AS on_delete,
+					CASE con.confupdtype
+						WHEN 'c' THEN 'cascade'
+						WHEN 'a' THEN 'no_action'
+						WHEN 'r' THEN 'restrict'
+						WHEN 'n' THEN 'set_null'
+						WHEN 'd' THEN 'set_default'
+					END AS on_update,
+					CASE
+						WHEN con.conkey IS NOT NULL THEN position(
+							'-'||col.attnum||'-' in '-'||array_to_string(con.conkey, '-')||'-'
+						)
+						ELSE 0
+					END AS column_order
+				FROM
+					pg_attribute AS col INNER JOIN
+					pg_class AS t ON
+						col.attrelid = t.oid INNER JOIN
+					pg_namespace AS s ON
+						t.relnamespace = s.oid INNER JOIN
+					pg_constraint AS con ON
+						col.attnum = ANY (con.conkey) AND
+						con.conrelid = t.oid LEFT JOIN
+					pg_class AS ft ON
+						con.confrelid = ft.oid LEFT JOIN
+					pg_namespace AS fs ON
+						ft.relnamespace = fs.oid LEFT JOIN
+					pg_attribute AS fc ON
+						fc.attnum = ANY (con.confkey) AND
+						ft.oid = fc.attrelid
+				WHERE
+					NOT col.attisdropped AND (
+						con.contype = 'p' OR
+						con.contype = 'f' OR
+						con.contype = 'u'
+					)
+				) UNION (
+					SELECT
+						LOWER(n.nspname) AS \"schema\",
+						LOWER(t.relname) AS \"table\",
+						ic.relname AS constraint_name,
+						'unique' AS type,
+						LOWER(col.attname) AS column,
+						NULL AS foreign_schema,
+						NULL AS foreign_table,
+						NULL AS foreign_column,
+						NULL AS on_delete,
+						NULL AS on_update,
+						CASE
+							WHEN ind.indkey IS NOT NULL THEN position(
+								'-'||col.attnum||'-' in '-'||array_to_string(ind.indkey, '-')||'-'
+							)
+							ELSE 0
+						END AS column_order
+					FROM
+						pg_class AS t INNER JOIN
+						pg_index AS ind ON
+							ind.indrelid = t.oid INNER JOIN
+						pg_namespace AS n ON
+							t.relnamespace = n.oid INNER JOIN
+						pg_class AS ic ON
+							ind.indexrelid = ic.oid LEFT JOIN
+						pg_constraint AS con ON
+							con.conrelid = t.oid AND
+							con.contype = 'u' AND
+							con.conname = ic.relname INNER JOIN
+						pg_attribute AS col ON
+							col.attrelid = t.oid AND
+							col.attnum = ANY (ind.indkey)
+					WHERE
+						n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
+						indisunique = TRUE AND
+						indisprimary = FALSE AND
+						con.oid IS NULL AND
+						0 != ALL ((ind.indkey)::int[])
+				) ORDER BY 1, 2, 4, 3, 11"
+			);
+
+			$last_name  = '';
+			$last_table = '';
+			$last_type  = '';
+
+			foreach ($result as $row) {
+				if ($row['constraint_name'] != $last_name) {
+					if ($last_name) {
+						if ($last_type == 'foreign' || $last_type == 'unique') {
+							$keys[$last_table][$last_type][] = $temp;
+
+						} else {
+							$keys[$last_table][$last_type] = $temp;
+						}
+					}
+
+					$temp = array();
+
+					if ($row['type'] == 'foreign') {
+						$temp['column']         = $row['column'];
+						$temp['foreign_table']  = $row['foreign_table'];
+
+						if ($row['foreign_schema'] != 'public') {
+							$temp['foreign_table'] = $row['foreign_schema'] . '.' . $temp['foreign_table'];
+						}
+
+						$temp['foreign_column'] = $row['foreign_column'];
+						$temp['on_delete']      = 'no_action';
+						$temp['on_update']      = 'no_action';
+
+						if (!empty($row['on_delete'])) {
+							$temp['on_delete'] = $row['on_delete'];
+						}
+
+						if (!empty($row['on_update'])) {
+							$temp['on_update'] = $row['on_update'];
+						}
+
+					} else {
+						$temp[] = $row['column'];
+					}
+
+					$last_table = $row['schema'] . '.' . $row['table'];
+					$last_name  = $row['constraint_name'];
+					$last_type  = $row['type'];
+
+				} else {
+					$temp[] = $row['column'];
+				}
+			}
+
+			if (isset($temp)) {
+				if ($last_type == 'foreign' || $last_type == 'unique') {
+					$keys[$last_table][$last_type][] = $temp;
+
+				} else {
+					$keys[$last_table][$last_type] = $temp;
+				}
+			}
+
+			print_r($keys);
+
+			$this->keys[$alias] = $keys;
+
+			return $this->resolveKeysAndIndexes($connection, $table);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function resolveRoutes($connection, $table)
+		{
+			$alias  = $connection->getAlias();
+
+			if (isset($this->routes[$alias])) {
+				if (isset($this->routes[$alias][$table])) {
+					return $this->routes[$alias][$table];
+				}
+
+				throw new Flourish\ProgrammerException(
+					'Failed to get route information for table "%s" on "%s"',
+					$table,
+					$alias
+				);
+
+			} else {
+				$this->routes[$alias] = array();
+			}
+
+			$keys   = $this->resolveKeysAndIndexes($connection, $table);
+			$routes = [
+				'hasMany'       => [],
+				'hasManyUnique' => [],
+				'hasOne'        => [],
+				'hasOneUnique'  => []
+			];
+
+
+			//
+			// TODO: Implement
+			//
+
+
+			$this->routes[$alias][$table] = $routes;
+
+			return $this->resolveRoutes($connection, $table);
+		}
+
+
+		/**
+		 *
+		 */
 		protected function resolveTableColumnInfo($connection, $table)
 		{
-			$schema      = static::DEFAULT_SCHEMA;
-			$alias       = $connection->getAlias();
-			$column_info = array();
-
-			if (!isset($this->columnInfo[$alias])) {
-				$this->columnInfo[$alias] = array();
-
-			} elseif (isset($this->columnInfo[$alias][$table])) {
-				return $this->columnInfo[$alias][$table];
-			}
+			$alias  = $connection->getAlias();
+			$schema = static::DEFAULT_SCHEMA;
 
 			if (strpos($table, '.') !== FALSE) {
 				list ($schema, $table) = explode('.', $table);
 			}
 
+			if (isset($this->columnInfo[$alias])) {
+				$table = $schema . '.' . $table;
+
+				if (isset($this->columnInfo[$alias][$table])) {
+					return $this->columnInfo[$alias][$table];
+				}
+
+				throw new Flourish\ProgrammerException(
+					'Failed to get column information for table "%s" on "%s"',
+					$table,
+					$alias
+				);
+
+			} else {
+				$this->columnInfo[$alias] = array();
+			}
+
+			$column_info    = array();
 			$max_min_values = [
 				'smallint'  => ['min' => -32768,               'max' => 32767],
 				'int'       => ['min' => -2147483648,          'max' => 2147483647],
@@ -213,7 +510,7 @@
 
 				preg_match(static::REGEX_DATA_TYPE, $row['data_type'], $column_data_type);
 
-				foreach (static::$dataTypes as $data_type => $mapped_data_type) {
+				foreach (static::$incomingDataTypes as $data_type => $mapped_data_type) {
 					if (stripos($column_data_type[1], $data_type) === 0) {
 						$info['type'] = $mapped_data_type;
 
@@ -302,11 +599,9 @@
 
 			print_r($column_info);
 
-			if ($schema == static::DEFAULT_SCHEMA) {
-				return $this->columnInfo[$alias][$table] = $column_info;
-			} else {
-				return $this->columnInfo[$alias][$schema . '.' . $table] = $column_info;
-			}
+			$this->columnInfo[$alias][$schema . '.' . $table] = $column_info;
+
+			return $this->resolveTableColumnInfo($connection, $table);
 		}
 	}
 }

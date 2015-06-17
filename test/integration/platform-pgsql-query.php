@@ -36,6 +36,12 @@
 
 	foreach ($connection->getRepositories() as $table) {
 		print_r($connection->getFields($table));
+		print_r($connection->getUniqueIndexes($table));
+		print_r($connection->getIdentity($table));
+		print_r($connection->getRoutesToMany($table, TRUE));
+		print_r($connection->getRoutesToMany($table));
+		print_r($connection->getRoutesToOne($table, TRUE));
+		print_r($connection->getRoutesToOne($table));
 
 		foreach ($connection->getFields($table) as $field) {
 			var_dump($connection->getFieldType($table, $field));
