@@ -72,7 +72,7 @@
 					$this->translate($query
 						-> perform('select', array_keys($mapping))
 						-> on($repository)
-						-> where($criteria)
+						-> using($criteria)
 					);
 				},
 				$repository,

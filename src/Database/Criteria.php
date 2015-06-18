@@ -46,7 +46,7 @@
 		 * @param array $conditions The conditions to add to the criteria
 		 * @return Criteria The object instance for method chaining
 		 */
-		public function where($conditions)
+		public function where(array $conditions)
 		{
 			if (is_array($conditions)) {
 				$this->criteria = array_merge($this->criteria, $conditions);

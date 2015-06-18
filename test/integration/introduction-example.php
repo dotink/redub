@@ -37,10 +37,10 @@
 	$connection->execute(function($query) {
 		$query
 			-> perform('insert', [
-				'first_name'	=> 'Matthew',
-				'last_name'	 => 'Sahagian',
+				'first_name'    => 'Matthew',
+				'last_name'     => 'Sahagian',
 				'date_of_birth' => '1984-04-28',
-				'biography'	 => 'A PHP Developer'
+				'biography'     => 'A PHP Developer'
 			])
 			-> on('people');
 	});
@@ -55,6 +55,37 @@
 		echo 'First Name: ' . $result['first_name'] . PHP_EOL;
 	}
 
+	$person = $results->get(0);
+
+	$connection->execute(function($query) use ($person) {
+		$query
+			-> perform('update', [
+				'first_name' => 'Matt'
+			])
+			-> on('people')
+			-> where([
+				'id ==' => $person['id']
+			]);
+	});
+
+	$connection->execute(function($query) {
+		$query
+			-> perform('delete')
+			-> on('people')
+			-> where([
+				'id ==' => 1
+			]);
+	});
+
+	$results = $connection->execute(function($query) {
+		$query
+			-> perform('select')
+			-> on('people');
+	});
+
+	foreach ($results as $result) {
+		echo 'First Name: ' . $result['first_name'] . PHP_EOL;
+	}
 
 	echo microtime_diff($start, microtime()). PHP_EOL;
 	echo (memory_get_usage() / 1024 / 1024) . PHP_EOL;

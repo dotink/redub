@@ -101,7 +101,7 @@
 		 */
 		public function escapeValue($value, Database\Query $query)
 		{
-			$query->using($value, $this->position++);
+			$query->bindParameter($value, $this->position++);
 
 			return '?';
 		}

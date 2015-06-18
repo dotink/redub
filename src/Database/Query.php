@@ -103,6 +103,18 @@
 		/**
 		 *
 		 */
+		public function bindParameter($param, $placeholderIndex)
+		{
+			$this->params[$placeholderIndex] = $param;
+
+			return $this;
+		}
+
+
+
+		/**
+		 *
+		 */
 		public function getAction()
 		{
 			return $this->action;
@@ -292,22 +304,15 @@
 		/**
 		 *
 		 */
-		public function using($params, $placeholderIndex = NULL)
+		public function using(Criteria $criteria)
 		{
 			!$this->isCompiled() ?: $this->reject();
 
-			if ($placeholderIndex == NULL) {
-				if (!is_array($params)) {
-					throw new Flourish\ProgrammerException(
-						'If no placeholder index is specified, parameters must be an array'
-					);
-				}
-
-				$this->params = $params;
-
-			} else {
-				$this->params[$placeholderIndex] = $params;
+			if (count($criteria->arguments)) {
+				$this->arguments = $criteria->arguments;
 			}
+
+			$this->criteria = $this->split(['all' => $criteria->criteria]);
 
 			return $this;
 		}
@@ -316,7 +321,7 @@
 		/**
 		 *
 		 */
-		public function where($conditions, $preformatted = FALSE)
+		public function where(array $conditions, $preformatted = FALSE)
 		{
 			!$this->isCompiled() ?: $this->reject();
 
@@ -324,24 +329,8 @@
 				$this->criteria = $conditions;
 
 			} else {
-				if ($conditions instanceof Criteria) {
-					if (count($conditions->arguments)) {
-						$this->arguments = $conditions->arguments;
-					}
-
-					$conditions = ['all' => $conditions->criteria];
-
-				} else {
-					if (is_array($conditions)) {
-						if (!in_array(key($conditions), ['any', 'all'])) {
-							$conditions = ['all' => $conditions];
-						}
-
-					} else {
-						throw new Flourish\ProgrammerException(
-							'Invalid criteria specified'
-						);
-					}
+				if (!in_array(key($conditions), ['any', 'all'])) {
+					$conditions = ['all' => $conditions];
 				}
 
 				$this->criteria = $this->split($conditions);

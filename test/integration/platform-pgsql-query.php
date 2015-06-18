@@ -111,7 +111,7 @@
 			'p.id', 'p.first_name', 'p.last_name'
 		])
 		-> on(['people' => 'p'])
-		-> where(
+		-> using(
 			$criteria->where(['p.id ==' => 1])
 		);
 
