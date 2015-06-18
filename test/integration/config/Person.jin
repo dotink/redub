@@ -10,9 +10,6 @@ ordering  = {
 	"lastName"  : "asc",
 	"firstName" : "asc"
 }
-callbacks = {
-	"ValidationService::validate" : ["insert", "update"]
-}
 
 	[People.fields.id]
 	type      = integer

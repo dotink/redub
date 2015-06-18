@@ -222,6 +222,14 @@
 	})->get(0));
 
 
+	var_dump($connection->execute(function($query) {
+		$query
+			-> perform('select')
+			-> on('people')
+		;
+	})->get(0));
+
+
 	$connection->execute(function($query) {
 		$query
 			-> perform('delete')

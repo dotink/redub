@@ -7,7 +7,7 @@
 	/**
 	 *
 	 */
-	class Native extends ORM\AbstractConfiguration
+	class Native extends AbstractConfiguration
 	{
 		/**
 		 *

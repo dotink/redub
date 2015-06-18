@@ -8,17 +8,15 @@
 		/**
 		 *
 		 */
-		protected function composeSelect($query, $placeholder)
+		protected function composeSelect($query, $driver)
 		{
-			$this->placeholderIndex = static::PLACEHOLDER_START;
-
 			return sprintf(
-				'SELECT %s %s %s %s %s',
-				$this->composeLimit   ($query, $placeholder),
-				$this->composeColumns ($query, $placeholder),
-				$this->composeFrom    ($query, $placeholder),
-				$this->composeWhere   ($query, $placeholder),
-				$this->composeOffset  ($query, $placeholder)
+				"SELECT %s %s %s %s %s",
+				$this->composeLimit   ($query, $driver),
+				$this->composeColumns ($query, $driver),
+				$this->composeFrom    ($query, $driver),
+				$this->composeWhere   ($query, $driver),
+				$this->composeOffset  ($query, $driver)
 			);
 		}
 
@@ -26,7 +24,7 @@
 		/**
 		 *
 		 */
-		protected function composeLimit($query, $placeholder)
+		protected function composeLimit($query, $driver)
 		{
 			$limit = $query->getLimit();
 
@@ -40,6 +38,6 @@
 
 			}
 
-			return sprintf('TOP %s', $this->makePlaceholder($query, $placeholder, $limit));
+			return sprintf('TOP %s', $driver->escapeValue($limit, $query));
 		}
 	}

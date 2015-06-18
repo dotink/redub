@@ -8,7 +8,7 @@
 	 * Jin configuration encapsulation
 	 *
 	 */
-	class Jin extends ORM\AbstractConfiguration
+	class Jin extends AbstractConfiguration
 	{
 		/**
 		 * The filesystem path to the configuration

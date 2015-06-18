@@ -1,5 +1,6 @@
-<?php namespace Redub\ORM
+<?php namespace Redub\ORM\Configuration
 {
+	use Redub\ORM\ConfigurationInterface;
 	use Redub\Database\ConnectionInterface;
 	use Dotink\Flourish;
 
