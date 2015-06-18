@@ -124,9 +124,13 @@
 		/**
 		 *
 		 */
-		protected function compileColumns($query, $driver)
+		protected function compileSelectColumns($query, $driver)
 		{
 			$columns = array();
+
+			if (!count($query->getArguments())) {
+				return '*';
+			}
 
 			foreach ($query->getArguments() as $key => $value) {
 				if (!is_string($value)) {
@@ -204,6 +208,110 @@
 			}
 
 			return $conditions;
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileDelete($query, $driver)
+		{
+			return sprintf(
+				"DELETE %s %s",
+				$this->compileDeleteFrom($query, $driver),
+				$this->compileWhere($query, $driver) ?: "WHERE true"
+			);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileDeleteFrom($query, $driver)
+		{
+			$repository = $query->getRepository();
+
+			if (!is_array($repository)) {
+				$table = $driver->escapeIdentifier($repository);
+
+			} else {
+				throw new Flourish\ProgrammerException(
+					'Cannot compile table in FROM clause with malformed repository value',
+					$repository
+				);
+			}
+
+			return sprintf("FROM %s", $table);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileInsert($query, $driver)
+		{
+			return sprintf(
+				"INSERT %s (%s) %s",
+				$this->compileInsertInto($query, $driver),
+				$this->compileInsertColumns($query, $driver),
+				$this->compileInsertValues($query, $driver)
+			);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileInsertColumns($query, $driver)
+		{
+			$columns = array();
+
+			foreach (array_keys($query->getArguments()) as $column) {
+				if (!is_string($column)) {
+					throw new Flourish\ProgrammerException(
+						'Cannot compile query with columns of non-string values'
+					);
+				}
+
+				$columns[] = $driver->escapeIdentifier($column);
+			}
+
+			return implode(', ', $columns);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileInsertInto($query, $driver)
+		{
+			$repository = $query->getRepository();
+
+			if (is_string($repository) && trim($repository)) {
+				$table = $driver->escapeIdentifier($repository);
+
+			} else {
+				throw new Flourish\ProgrammerException(
+					'Cannot compile query with non-string or empty repository'
+				);
+			}
+
+			return sprintf("INTO %s", $table);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileInsertValues($query, $driver)
+		{
+			$values = array();
+
+			foreach ($query->getArguments() as $value) {
+				$values[] = $driver->escapeValue($value, $query);
+			}
+
+			return sprintf("VALUES(%s)", implode(',', $values));
 		}
 
 
@@ -294,45 +402,6 @@
 			return sprintf('OFFSET %s', $this->makeValue($query, $driver, $offset));
 		}
 
-		/**
-		 *
-		 */
-		protected function compileDeleteFrom($query, $driver)
-		{
-			//
-			// TODO: Implement the simplified FROM
-			//
-			return NULL;
-		}
-
-
-		/**
-		 *
-		 */
-		protected function compileSelectFrom($query, $driver)
-		{
-			$repository = $query->getRepository();
-
-			if (!is_array($repository)) {
-				$table = $driver->escapeIdentifier($repository);
-
-			} elseif (!is_numeric(key($repository))) {
-				$table = $this->makeTableWithAlias(
-					$query,
-					$driver,
-					key($repository),
-					current($repository)
-				);
-
-			} else {
-				throw new Flourish\ProgrammerException(
-					'Cannot compile tables in FROM clause with malformed repository value',
-					$repository
-				);
-			}
-
-			return sprintf('FROM %s %s', $table, $this->compileJoins($query, $driver));
-		}
 
 		/**
 		 *
@@ -374,12 +443,92 @@
 		{
 			return trim(sprintf(
 				'SELECT %s %s %s %s %s',
-				$this->compileColumns ($query, $driver),
+				$this->compileSelectColumns ($query, $driver),
 				$this->compileFrom    ($query, $driver),
 				$this->compileWhere   ($query, $driver),
 				$this->compileLimit   ($query, $driver),
 				$this->compileOffset  ($query, $driver)
 			));
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileSelectFrom($query, $driver)
+		{
+			$repository = $query->getRepository();
+
+			if (!is_array($repository)) {
+				$table = $driver->escapeIdentifier($repository);
+
+			} elseif (!is_numeric(key($repository))) {
+				$table = $this->makeTableWithAlias(
+					$query,
+					$driver,
+					key($repository),
+					current($repository)
+				);
+
+			} else {
+				throw new Flourish\ProgrammerException(
+					'Cannot compile tables in FROM clause with malformed repository value',
+					$repository
+				);
+			}
+
+			return sprintf('FROM %s %s', $table, $this->compileJoins($query, $driver));
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileUpdate($query, $driver)
+		{
+			$repository = $query->getRepository();
+
+			if (!is_array($repository)) {
+				$table = $driver->escapeIdentifier($repository);
+
+			} else {
+				throw new Flourish\ProgrammerException(
+					'Cannot compile table in UPDATE clause with malformed repository value',
+					$repository
+				);
+			}
+
+			return sprintf(
+				"UPDATE %s %s %s",
+				$table,
+				$this->compileUpdateSet($query, $driver),
+				$this->compileWhere($query, $driver)
+			);
+		}
+
+
+		/**
+		 *
+		 */
+		protected function compileUpdateSet($query, $driver)
+		{
+			$assignments = array();
+
+			foreach ($query->getArguments() as $column => $value) {
+				if (is_int($column)) {
+					throw new Flourish\ProgrammerException(
+						'Cannot compile SET clause, invalid assignment to numeric column'
+					);
+				}
+
+				$assignments[] = sprintf(
+					"%s = %s",
+					$driver->escapeIdentifier($column),
+					$driver->escapeValue($value, $query)
+				);
+			}
+
+			return sprintf("SET %s", implode(", ", $assignments));
 		}
 
 

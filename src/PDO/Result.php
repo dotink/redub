@@ -73,11 +73,7 @@
 			}
 
 			if ($index >= $this->count) {
-				throw new Flourish\ProgrammerException(
-					'Cannot get element at index "%s", only "%s" results returned',
-					$index,
-					$this->count
-				);
+				return NULL;
 			}
 
 			if (!isset($this->rows[$index])) {

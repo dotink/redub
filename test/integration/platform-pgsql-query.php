@@ -161,5 +161,84 @@
 
 	var_dump($connection->execute($query)->get(0));
 
+	$query = (new Query)
+		-> perform('insert', [
+			'first_name' => 'Bob',
+			'last_name'  => 'Jones',
+			'age'        => 300
+		])
+		-> on('people');
+
+	echo $driver->getPlatform()->compile($query, $driver) . PHP_EOL;
+
+	$connection->execute(function($query) {
+		$query
+			-> perform('insert', [
+				'first_name' => 'Bob',
+				'last_name'  => 'Jones',
+				'age'        => 300
+			])
+			-> on('people')
+		;
+
+		print_r($query);
+	});
+
+	var_dump($connection->execute(function($query) {
+		$query
+			-> perform('select')
+			-> on('people')
+			-> where(['last_name ==' => 'Jones'])
+		;
+	})->get(0));
+
+
+	$connection->execute(function($query) {
+		$query
+			-> perform('update', [
+				'last_name'  => 'The Builder'
+			])
+			-> on('people')
+			-> where(['last_name ==' => 'Jones']);
+		;
+
+		print_r($query);
+	});
+
+	var_dump($connection->execute(function($query) {
+		$query
+			-> perform('select')
+			-> on('people')
+			-> where(['last_name ==' => 'Jones'])
+		;
+	})->get(0));
+
+	var_dump($connection->execute(function($query) {
+		$query
+			-> perform('select')
+			-> on('people')
+			-> where(['last_name ==' => 'The Builder'])
+		;
+	})->get(0));
+
+
+	$connection->execute(function($query) {
+		$query
+			-> perform('delete')
+			-> on('people')
+			-> where(['last_name ==' => 'The Builder'])
+		;
+
+		print_r($query);
+	});
+
+	var_dump($connection->execute(function($query) {
+		$query
+			-> perform('select')
+			-> on('people')
+			-> where(['last_name ==' => 'The Builder'])
+		;
+	})->get(0));
+
 	echo microtime_diff($start, microtime()). PHP_EOL;
 	echo (memory_get_usage() / 1024 / 1024) . PHP_EOL;
