@@ -6,7 +6,7 @@ uniqueOn  = [
 	["team", "teamRank"],
 	["email"]
 ]
-ordering  = {
+order  = {
 	"lastName"  : "asc",
 	"firstName" : "asc"
 }
